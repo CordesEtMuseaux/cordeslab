@@ -7,9 +7,13 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
   const [stats, setStats] = useState({ count: 0, time: "0h 00" });
+  const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("cordeslab_projects");
+    if (!saved || JSON.parse(saved).length === 0) {
+      setShowWelcome(true);
+    }
     if (saved) {
       const allProjects = JSON.parse(saved);
       setRecentProjects(allProjects.slice(0, 2));
@@ -24,6 +28,8 @@ export default function Dashboard() {
       const finalHours = Math.floor(totalMinutes / 60);
       const finalMins = totalMinutes % 60;
       setStats({ count: allProjects.length, time: `${finalHours}h ${finalMins.toString().padStart(2, "0")}` });
+    } else {
+      setShowWelcome(true);
     }
   }, []);
 
@@ -40,7 +46,45 @@ export default function Dashboard() {
         }
       `}</style>
 
-      <h1 style={{ fontSize: "28px", fontWeight: "900", color: THEME.colors.textMain, marginBottom: "30px" }}>Tableau de bord</h1>
+      <h1 style={{ fontSize: "28px", fontWeight: "900", color: THEME.colors.textMain, marginBottom: "20px" }}>Tableau de bord</h1>
+
+      {/* SECTION BIENVENUE — visible uniquement si aucun projet */}
+      {showWelcome && (
+        <div style={{
+          background: "#fff",
+          borderRadius: THEME.radius.card,
+          border: `2px solid ${THEME.colors.accent}`,
+          padding: "24px",
+          marginBottom: "30px",
+        }}>
+          <div style={{ fontSize: "20px", marginBottom: "8px" }}>👋 Bienvenue sur CordesLab !</div>
+          <p style={{ color: THEME.colors.textMuted, fontSize: "14px", marginBottom: "16px", lineHeight: 1.6 }}>
+            CordesLab est un <strong>calculateur de longueurs de paracorde</strong> pour confectionner soi-même ses accessoires pour chien (colliers, poignées, laisses...).
+          </p>
+          <p style={{ color: THEME.colors.textMuted, fontSize: "14px", marginBottom: "16px", lineHeight: 1.6 }}>
+            Il vous suffit d'acheter de la <strong>paracorde 4mm</strong> et les attaches de votre choix (boucles plastique ou métal). L'app calcule automatiquement les longueurs à couper selon le nœud et la taille choisie.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "12px", marginBottom: "20px" }}>
+            {[
+              { num: "1", text: "Choisissez votre accessoire et nœud" },
+              { num: "2", text: "Entrez la longueur souhaitée" },
+              { num: "3", text: "Obtenez vos longueurs à couper" },
+              { num: "4", text: "Téléchargez votre plan PDF" },
+            ].map((step) => (
+              <div key={step.num} style={{ background: THEME.colors.primaryBg, borderRadius: "12px", padding: "12px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
+                <div style={{ background: THEME.colors.accent, color: "#fff", borderRadius: "50%", width: "24px", height: "24px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "900", fontSize: "12px", flexShrink: 0 }}>{step.num}</div>
+                <div style={{ fontSize: "13px", color: THEME.colors.textMain, fontWeight: "600" }}>{step.text}</div>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => navigate("/newcalc")}
+            style={{ background: THEME.colors.accent, color: "#fff", border: "none", padding: "12px 30px", borderRadius: "12px", fontWeight: "bold", cursor: "pointer", fontSize: "14px" }}
+          >
+            Commencer mon premier calcul →
+          </button>
+        </div>
+      )}
 
       <div className="dashboard-stats" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "25px", marginBottom: "40px" }}>
         <div style={{ background: THEME.colors.accent, padding: "30px", borderRadius: THEME.radius.card, color: "#fff" }}>
