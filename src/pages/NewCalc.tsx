@@ -646,5 +646,5 @@ const previewBox    = { height: "160px", background: "#F3F1EA", borderRadius: "2
 const mainBtn       = { padding: "10px 15px", borderRadius: "15px", border: "none", background: "#006D6F", color: "#fff", fontWeight: "bold", cursor: "pointer" };
 const secBtn        = { padding: "10px 15px", borderRadius: "15px", border: "1px solid #EEE", background: "#FFF", cursor: "pointer" };
 const labelStyle    = { fontSize: "11px", fontWeight: "bold" as const, color: "#666", marginBottom: "5px", display: "block" };
-const lockBadge     = { position: "absolute" as const, top: "-6px", right: "8px", fontSize: "8px", fontWeight: 700, background: "#4A4A4A", color: "#fff", padding: "2px 5px", borderRadius: "6px", lineHeight: 1.1 };
+const lockBadge = { position: "absolute" as const, top: "-6px", left: "50%", transform: "translateX(-50%)", fontSize: "8px", fontWeight: 700, background: "#4A4A4A", color: "#fff", padding: "2px 5px", borderRadius: "6px", lineHeight: 1.1 };
 const saveInfoStyle = { marginTop: "14px", padding: "10px 12px", borderRadius: "12px", background: "#EDF8F5", border: "1px solid #CDE9E1", color: "#0C5E57", fontSize: "12px", fontWeight: 700 };
