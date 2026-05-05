@@ -5,7 +5,6 @@ import html2canvas from "html2canvas";
 
 import CobraPreview, { KnotPreviewHandle } from "../components/Debutant/CobraPreview";
 import FishtailPreview from "../components/Debutant/FishtailPreview";
-import CarrePreview from "../components/Debutant/CarrePreview";
 import LadderRackPreview from "../components/Debutant/LadderRackPreview";
 import SnakeKnotPreview from "../components/Debutant/SnakeKnotPreview";
 import SpiralPreview from "../components/Debutant/SpiralPreview";
@@ -48,6 +47,7 @@ const ACCESSORIES_CONFIG = {
 
 type AccessoryKey = keyof typeof ACCESSORIES_CONFIG;
 type LengthUnit = "cm" | "m" | "in";
+type RopeSize = "3mm" | "4mm";
 
 const UNIT_OPTIONS: { value: LengthUnit; label: string }[] = [
   { value: "cm", label: "cm" },
@@ -56,23 +56,22 @@ const UNIT_OPTIONS: { value: LengthUnit; label: string }[] = [
 ];
 
 const KNOTS_REGISTRY = [
-  { id: "Cobra",        name: "Cobra",        difficulty: "Débutant",      component: CobraPreview,        factor: 21, order: 1, is3D: true, baseMinutes: 45  , calibrated: true },
-  { id: "Fishtail",     name: "Fishtail",      difficulty: "Débutant",      component: FishtailPreview,     factor: 18, order: 2, is3D: true, baseMinutes: 55  , calibrated: false },
-  { id: "Carré",        name: "Carré",         difficulty: "Débutant",      component: CarrePreview,        factor: 21, order: 3, is3D: true, baseMinutes: 50  , calibrated: false },
-  { id: "LadderRack",   name: "Ladder Rack",   difficulty: "Débutant",      component: LadderRackPreview,   factor: 20, order: 4, is3D: true, baseMinutes: 50  , calibrated: false },
-  { id: "SnakeKnot",    name: "Snake Knot",    difficulty: "Débutant",      component: SnakeKnotPreview,    factor: 14, order: 5, is3D: true, baseMinutes: 35  , calibrated: false },
-  { id: "Spiral",       name: "Spiral",        difficulty: "Débutant",      component: SpiralPreview,       factor: 16, order: 6, is3D: true, baseMinutes: 40  , calibrated: false },
-  { id: "SquareKnot",   name: "Square Knot",   difficulty: "Débutant",      component: SquareKnotPreview,   factor: 18, order: 7, is3D: true, baseMinutes: 45  , calibrated: false },
-  { id: "Trilobite",    name: "Trilobite",     difficulty: "Intermédiaire", component: TrilobitePreview,    factor: 24, order: 1, is3D: true, baseMinutes: 70  , calibrated: false },
-  { id: "CrownSinnet",  name: "Crown Sinnet",  difficulty: "Intermédiaire", component: CrownSinnetPreview,  factor: 16, order: 2, is3D: true, baseMinutes: 60  , calibrated: false },
-  { id: "TressageRond", name: "Tressage Rond", difficulty: "Intermédiaire", component: TressageRondPreview, factor: 14, order: 3, is3D: true, baseMinutes: 55  , calibrated: true },
-  { id: "ViperWeave",   name: "Viper Weave",   difficulty: "Intermédiaire", component: ViperWeavePreview,   factor: 22, order: 4, is3D: true, baseMinutes: 65  , calibrated: false },
-  { id: "KingCobra",    name: "King Cobra",    difficulty: "Avancé",        component: KingCobraPreview,    factor: 35, order: 1, is3D: true, baseMinutes: 90  , calibrated: false },
-  { id: "Sanctified",   name: "Sanctified",    difficulty: "Avancé",        component: SanctifiedPreview,   factor: 28, order: 2, is3D: true, baseMinutes: 80  , calibrated: false },
-  { id: "SharkJawbone", name: "Shark Jawbone", difficulty: "Avancé",        component: SharkJawbonePreview, factor: 30, order: 3, is3D: true, baseMinutes: 85  , calibrated: false },
-  { id: "AztecSunBar",  name: "Aztec Sun Bar", difficulty: "Expert",        component: AztecSunBarPreview,  factor: 40, order: 1, is3D: true, baseMinutes: 105 , calibrated: false },
-  { id: "CelticBar",    name: "Celtic Bar",    difficulty: "Expert",        component: CelticBarPreview,    factor: 38, order: 2, is3D: true, baseMinutes: 100 , calibrated: false },
-  { id: "MadMax",       name: "Mad Max",       difficulty: "Expert",        component: MadMaxPreview,       factor: 45, order: 3, is3D: true, baseMinutes: 120 , calibrated: false },
+  { id: "Cobra",        name: "Cobra",        difficulty: "Débutant",      component: CobraPreview,        factor: 21, order: 1, is3D: true, baseMinutes: 45,  calibrated: true  },
+  { id: "Fishtail",     name: "Fishtail",     difficulty: "Débutant",      component: FishtailPreview,     factor: 18, order: 2, is3D: true, baseMinutes: 55,  calibrated: true  },
+  { id: "LadderRack",   name: "Ladder Rack",  difficulty: "Débutant",      component: LadderRackPreview,   factor: 20, order: 3, is3D: true, baseMinutes: 50,  calibrated: false },
+  { id: "SnakeKnot",    name: "Snake Knot",   difficulty: "Débutant",      component: SnakeKnotPreview,    factor: 14, order: 4, is3D: true, baseMinutes: 35,  calibrated: false },
+  { id: "Spiral",       name: "Spiral",       difficulty: "Débutant",      component: SpiralPreview,       factor: 16, order: 5, is3D: true, baseMinutes: 40,  calibrated: false },
+  { id: "SquareKnot",   name: "Square Knot",  difficulty: "Débutant",      component: SquareKnotPreview,   factor: 18, order: 6, is3D: true, baseMinutes: 45,  calibrated: false },
+  { id: "Trilobite",    name: "Trilobite",    difficulty: "Intermédiaire", component: TrilobitePreview,    factor: 24, order: 1, is3D: true, baseMinutes: 70,  calibrated: false },
+  { id: "CrownSinnet",  name: "Crown Sinnet", difficulty: "Intermédiaire", component: CrownSinnetPreview,  factor: 16, order: 2, is3D: true, baseMinutes: 60,  calibrated: false },
+  { id: "TressageRond", name: "Tressage Rond",difficulty: "Intermédiaire", component: TressageRondPreview, factor: 14, order: 3, is3D: true, baseMinutes: 55,  calibrated: true  },
+  { id: "ViperWeave",   name: "Viper Weave",  difficulty: "Intermédiaire", component: ViperWeavePreview,   factor: 22, order: 4, is3D: true, baseMinutes: 65,  calibrated: false },
+  { id: "KingCobra",    name: "King Cobra",   difficulty: "Avancé",        component: KingCobraPreview,    factor: 35, order: 1, is3D: true, baseMinutes: 90,  calibrated: false },
+  { id: "Sanctified",   name: "Sanctified",   difficulty: "Avancé",        component: SanctifiedPreview,   factor: 28, order: 2, is3D: true, baseMinutes: 80,  calibrated: false },
+  { id: "SharkJawbone", name: "Shark Jawbone",difficulty: "Avancé",        component: SharkJawbonePreview, factor: 30, order: 3, is3D: true, baseMinutes: 85,  calibrated: false },
+  { id: "AztecSunBar",  name: "Aztec Sun Bar",difficulty: "Expert",        component: AztecSunBarPreview,  factor: 40, order: 1, is3D: true, baseMinutes: 105, calibrated: false },
+  { id: "CelticBar",    name: "Celtic Bar",   difficulty: "Expert",        component: CelticBarPreview,    factor: 38, order: 2, is3D: true, baseMinutes: 100, calibrated: false },
+  { id: "MadMax",       name: "Mad Max",      difficulty: "Expert",        component: MadMaxPreview,       factor: 45, order: 3, is3D: true, baseMinutes: 120, calibrated: false },
 ] as const;
 
 const STORAGE_KEYS = {
@@ -134,7 +133,7 @@ const safeWrite = (key: string, val: any) => {
 type FormData = {
   name: string; type: AccessoryKey; model: string; difficulty: string; nodeId: string;
   length: number; unit: LengthUnit; colorCount: number; roundingValue: number;
-  secureMode: boolean; colors: string[];
+  secureMode: boolean; colors: string[]; ropeSize: RopeSize;
 };
 
 type StoredProject = {
@@ -146,7 +145,6 @@ type StoredProject = {
   timeSpent: number; createdAt: string; updatedAt: string;
 };
 
-// ─── TOOLTIP ──────────────────────────────────────────────────────────────────
 function Tooltip({ text }: { text: string }) {
   const [visible, setVisible] = useState(false);
   return (
@@ -187,7 +185,6 @@ function Tooltip({ text }: { text: string }) {
   );
 }
 
-// ─── SOUS-COMPOSANTS ──────────────────────────────────────────────────────────
 const AccessoryButton = memo(({ id, acc, selected, locked, onClick }: {
   id: string; acc: typeof ACCESSORIES_CONFIG[AccessoryKey]; selected: boolean; locked: boolean; onClick: () => void;
 }) => (
@@ -218,6 +215,7 @@ const INITIAL_FORM: FormData = {
   difficulty: "Débutant", nodeId: "Cobra", length: 35, unit: "cm",
   colorCount: 2, roundingValue: 10, secureMode: true,
   colors: [COLORS_DATABASE[6].hex, COLORS_DATABASE[1].hex, "#1F1F1F", "#FFFFFF"],
+  ropeSize: "4mm",
 };
 
 export default function NewCalc() {
@@ -246,9 +244,10 @@ export default function NewCalc() {
 
   const results = useMemo(() => {
     const margin     = formData.secureMode ? 1.1 : 1.0;
+    const ropeFactor = formData.ropeSize === "3mm" ? 0.85 : 1.0;
     const lengthCm   = toCm(formData.length, formData.unit);
     const roundingCm = Math.max(1, toCm(formData.roundingValue, formData.unit));
-    const perColor   = Math.ceil((lengthCm * knot.factor * margin) / formData.colorCount / roundingCm) * roundingCm;
+    const perColor   = Math.ceil((lengthCm * knot.factor * ropeFactor * margin) / formData.colorCount / roundingCm) * roundingCm;
     const estMin     = getEstMin(knot.baseMinutes, lengthCm, formData.type, formData.model);
     return {
       perColor, ame: lengthCm, estimatedMinutes: estMin, estimatedTime: fmtDur(estMin),
@@ -416,7 +415,7 @@ export default function NewCalc() {
       doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(...C.white); doc.text("estimé", pageW-mX-17, 62.8, { align:"center" });
       sY+=9.5;
       doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(...C.ink);
-      doc.text(`Nœud : ${results.knotName} · Longueur : ${formData.length} ${formData.unit} · Ø 4 mm`, lX, sY);
+      doc.text(`Nœud : ${results.knotName} · Longueur : ${formData.length} ${formData.unit} · Ø ${formData.ropeSize}`, lX, sY);
       doc.text(`Arrondi : ${formData.roundingValue} ${formData.unit} · Unité : ${formData.unit}`, mX+128, sY);
       sY+=11;
       colorNames.forEach((n,i) => doc.text(n, lX, sY+i*6));
@@ -436,7 +435,7 @@ export default function NewCalc() {
       doc.setFont("helvetica","bold"); doc.setFontSize(17); doc.text(fmtLen(results.totalGeneral, formData.unit), pageW-mX-8, scY+29.5, { align:"right" });
       doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.setTextColor(...C.muted);
       doc.text(`Ces totaux incluent automatiquement la marge de 10% et l'arrondi (${formData.roundingValue} ${formData.unit}).`, lX, scY+49, { maxWidth:155 });
-      doc.text(`Facteur : ${results.factor} · Marge : 10% · Arrondi : ${formData.roundingValue} ${formData.unit}`, lX, scY+54.8);
+      doc.text(`Facteur : ${results.factor} · Marge : 10% · Arrondi : ${formData.roundingValue} ${formData.unit} · Corde : ${formData.ropeSize}`, lX, scY+54.8);
       doc.setDrawColor(...C.border); doc.setLineWidth(0.45); doc.line(mX, scY+62.5, pageW-mX, scY+62.5);
       const vigY=scY+69;
       section(vigY,"Points de vigilance",C.orange);
@@ -540,6 +539,16 @@ export default function NewCalc() {
                 <label style={labelStyle}>Unité</label>
                 <select style={inputStyle} value={formData.unit} onChange={(e) => handleUnitChange(e.target.value as LengthUnit)}>
                   {UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                </select>
+              </div>
+              <div style={{ marginTop: "15px" }}>
+                <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>
+                  Épaisseur corde
+                  <Tooltip text="La paracorde 3mm consomme environ 15% moins de corde que la 4mm pour le même nœud." />
+                </label>
+                <select style={inputStyle} value={formData.ropeSize} onChange={(e) => setFormData((p) => ({ ...p, ropeSize: e.target.value as RopeSize }))}>
+                  <option value="4mm">4 mm (standard)</option>
+                  <option value="3mm">3 mm (fine)</option>
                 </select>
               </div>
               <div style={{ marginTop: "18px", border: "1px solid #EAEAEA", borderRadius: "22px", padding: "18px 18px 14px", background: "#fff" }}>
@@ -646,5 +655,5 @@ const previewBox    = { height: "160px", background: "#F3F1EA", borderRadius: "2
 const mainBtn       = { padding: "10px 15px", borderRadius: "15px", border: "none", background: "#006D6F", color: "#fff", fontWeight: "bold", cursor: "pointer" };
 const secBtn        = { padding: "10px 15px", borderRadius: "15px", border: "1px solid #EEE", background: "#FFF", cursor: "pointer" };
 const labelStyle    = { fontSize: "11px", fontWeight: "bold" as const, color: "#666", marginBottom: "5px", display: "block" };
-const lockBadge = { position: "absolute" as const, top: "-6px", left: "50%", transform: "translateX(-50%)", fontSize: "8px", fontWeight: 700, background: "#4A4A4A", color: "#fff", padding: "2px 5px", borderRadius: "6px", lineHeight: 1.1 };
+const lockBadge     = { position: "absolute" as const, top: "-6px", left: "50%", transform: "translateX(-50%)", fontSize: "8px", fontWeight: 700, background: "#4A4A4A", color: "#fff", padding: "2px 5px", borderRadius: "6px", lineHeight: 1.1 };
 const saveInfoStyle = { marginTop: "14px", padding: "10px 12px", borderRadius: "12px", background: "#EDF8F5", border: "1px solid #CDE9E1", color: "#0C5E57", fontSize: "12px", fontWeight: 700 };
