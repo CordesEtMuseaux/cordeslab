@@ -229,7 +229,7 @@ export default function App() {
   }, []);
 
   return (
-    <div style={{ overflowX: "hidden", width: "100%" }}>
+    <div style={{ width: '100%' }}>
       <TopNav />
       <Routes>
         <Route path="/"          element={<Dashboard />} />
