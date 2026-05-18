@@ -11,13 +11,14 @@ export interface KnotPreviewHandle {
   getSnapshot: () => string
 }
 
-function getRealImage(accessoryType?: string, defaultImg: string = ''): string {
+function getRealImage(accessoryType?: string): string {
   switch (accessoryType) {
+    case 'COLLIER': return '/images/knots/cobra-real.jpg'
     case 'LAISSE':  return '/images/accessoires/laisse-real.jpg'
     case 'POIGNEE': return '/images/accessoires/poignee-real.jpg'
     case 'HARNAIS': return '/images/accessoires/harnais-real.jpg'
     case 'JOUETS':  return '/images/accessoires/jouet-real.jpg'
-    default:        return defaultImg
+    default:        return '/images/knots/cobra-real.jpg'
   }
 }
 
@@ -31,6 +32,21 @@ const CobraPreview = forwardRef<KnotPreviewHandle, Props>(function CobraPreview(
       return rendererRef.current.domElement.toDataURL('image/png')
     }
   }))
+
+  // Préchargement des images au montage
+  useEffect(() => {
+    const images = [
+      '/images/knots/cobra-real.jpg',
+      '/images/accessoires/laisse-real.jpg',
+      '/images/accessoires/poignee-real.jpg',
+      '/images/accessoires/harnais-real.jpg',
+      '/images/accessoires/jouet-real.jpg',
+    ]
+    images.forEach((src) => {
+      const img = new Image()
+      img.src = src
+    })
+  }, [])
 
   useEffect(() => {
     if (!mountRef.current) return
@@ -110,7 +126,16 @@ const CobraPreview = forwardRef<KnotPreviewHandle, Props>(function CobraPreview(
         <span style={{ position: 'absolute', top: '10px', left: '10px', fontSize: '9px', fontWeight: 'bold', color: '#888', pointerEvents: 'none', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Aperçu couleurs (3D)</span>
       </div>
       <div style={{ width: '203px', height: '100%', position: 'relative', borderLeft: '2px solid rgba(255,255,255,0.4)' }}>
-        <img src={getRealImage(accessoryType, '/images/knots/cobra-real.jpg')} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Rendu réel" />
+        <img
+          key={accessoryType}
+          src={getRealImage(accessoryType)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          alt="Rendu réel"
+          onError={(e) => {
+            console.error('Image non trouvée :', (e.target as HTMLImageElement).src)
+            ;(e.target as HTMLImageElement).src = '/images/knots/cobra-real.jpg'
+          }}
+        />
         <span style={{ position: 'absolute', top: '10px', left: '10px', fontSize: '9px', fontWeight: 'bold', color: '#fff', textShadow: '1px 1px 2px rgba(0,0,0,0.5)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Rendu réel</span>
       </div>
     </div>

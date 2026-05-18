@@ -163,7 +163,6 @@ a {
   transition: all 0.2s ease;
 }
 
-/* Animation croix */
 .hamburger-icon.open span:nth-child(1) {
   transform: translateY(7px) rotate(45deg);
 }
@@ -486,7 +485,11 @@ a {
   gap: 12px;
 }
 
-/* acc-buttons : grid sur tous les écrans */
+/* =========================
+   BOUTONS ACCESSOIRES
+========================= */
+
+/* Desktop : 5 colonnes en grille */
 .acc-buttons-wrap {
   display: grid !important;
   grid-template-columns: repeat(5, 1fr) !important;
@@ -494,6 +497,7 @@ a {
   padding-top: 8px !important;
   overflow: visible !important;
 }
+
 .acc-buttons-wrap > div {
   width: 100% !important;
   flex: none !important;
@@ -501,13 +505,13 @@ a {
   position: relative !important;
 }
 
+/* =========================
+   NEWCALC
+========================= */
+
 .newcalc-padding {
   padding: 30px;
 }
-
-/* =========================
-   NEWCALC RESPONSIVE
-========================= */
 
 .newcalc-grid {
   max-width: 1250px;
@@ -606,9 +610,19 @@ a {
     display: none;
   }
 
-  /* Boutons accessoires : 3 colonnes dès 760px ← CORRECTION */
+  /* Boutons accessoires : 5 colonnes comprimées sur une ligne */
   .acc-buttons-wrap {
-    grid-template-columns: repeat(3, 1fr) !important;
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 6px !important;
+    overflow: visible !important;
+  }
+
+  .acc-buttons-wrap > div {
+    flex: none !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 8px !important;
   }
 
   .newcalc-grid {
@@ -656,10 +670,12 @@ a {
     padding: 12px !important;
   }
 
+  /* Boutons accessoires : 5 colonnes comprimées */
   .acc-buttons-wrap {
     display: grid !important;
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 8px !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 4px !important;
+    overflow: visible !important;
   }
 
   .acc-buttons-wrap > div {
@@ -667,12 +683,9 @@ a {
     width: 100% !important;
     min-width: 0 !important;
     max-width: 100% !important;
-  }
-
-  .acc-buttons-wrap > div {
-    min-height: 70px !important;
+    min-height: 60px !important;
     height: auto !important;
-    font-size: 9px !important;
+    font-size: 8px !important;
   }
 
   .acc-buttons-wrap span[style*="position: absolute"] {

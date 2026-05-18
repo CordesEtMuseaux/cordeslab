@@ -1,11 +1,46 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import NecklacePreview from "../components/NecklacePreview";
+import CobraPreview from "../components/Debutant/CobraPreview";
+import FishtailPreview from "../components/Debutant/FishtailPreview";
+import LadderRackPreview from "../components/Debutant/LadderRackPreview";
+import SnakeKnotPreview from "../components/Debutant/SnakeKnotPreview";
+import SpiralPreview from "../components/Debutant/SpiralPreview";
+import SquareKnotPreview from "../components/Debutant/SquareKnotPreview";
+import TrilobitePreview from "../components/Intermediaire/TrilobitePreview";
+import CrownSinnetPreview from "../components/Intermediaire/CrownSinnetPreview";
+import TressageRondPreview from "../components/Intermediaire/TressageRondPreview";
+import ViperWeavePreview from "../components/Intermediaire/ViperWeavePreview";
+import KingCobraPreview from "../components/Avance/KingCobraPreview";
+import SanctifiedPreview from "../components/Avance/SanctifiedPreview";
+import SharkJawbonePreview from "../components/Avance/SharkJawbonePreview";
+import AztecSunBarPreview from "../components/Expert/AztecSunBarPreview";
+import CelticBarPreview from "../components/Expert/CelticBarPreview";
+import MadMaxPreview from "../components/Expert/MadMaxPreview";
 
 const THEME = {
   colors: { primaryBg: "#EFE7D8", cardBg: "#FFFFFF", accent: "#006D6F", textMain: "#1F1F1F", textMuted: "#6B6B6B", border: "#EEEEEE", error: "#c53030" },
   radius: { card: "24px", inner: "15px" }
 };
+
+const KNOT_COMPONENTS: Record<string, React.ComponentType<any>> = {
+  Cobra: CobraPreview, Fishtail: FishtailPreview, LadderRack: LadderRackPreview,
+  SnakeKnot: SnakeKnotPreview, Spiral: SpiralPreview, SquareKnot: SquareKnotPreview,
+  Trilobite: TrilobitePreview, CrownSinnet: CrownSinnetPreview, TressageRond: TressageRondPreview,
+  ViperWeave: ViperWeavePreview, KingCobra: KingCobraPreview, Sanctified: SanctifiedPreview,
+  SharkJawbone: SharkJawbonePreview, AztecSunBar: AztecSunBarPreview, CelticBar: CelticBarPreview,
+  MadMax: MadMaxPreview,
+};
+
+function KnotThumbnail({ nodeId, colors, type }: { nodeId: string; colors: string[]; type: string }) {
+  const Component = KNOT_COMPONENTS[nodeId] ?? CobraPreview;
+  return (
+    <div style={{ width: "203px", height: "70px", background: "#ddd6cc", borderRadius: "12px", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <div style={{ transform: "scale(0.5)", transformOrigin: "center center" }}>
+        <Component color1={colors[0]} color2={colors[1] || colors[0]} accessoryType={type} orientation="horizontal" />
+      </div>
+    </div>
+  );
+}
 
 export default function History() {
   const navigate = useNavigate();
@@ -36,7 +71,6 @@ export default function History() {
 
   return (
     <div style={{ padding: "30px", maxWidth: "1200px", margin: "0 auto", backgroundColor: THEME.colors.primaryBg, minHeight: "100vh", fontFamily: "sans-serif" }}>
-
       <style>{`
         @media (max-width: 480px) {
           .history-wrap { padding: 16px !important; }
@@ -76,11 +110,7 @@ export default function History() {
             </div>
 
             <div className="history-detail" style={{ padding: "16px", display: "flex", gap: "20px", alignItems: "center" }}>
-              <div style={{ width: "80px", height: "50px", background: THEME.colors.primaryBg, borderRadius: "12px", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <div style={{ transform: "scale(0.4) rotate(90deg)" }}>
-                  <NecklacePreview knotId={item.nodeId} primaryColor={item.colors[0]} secondaryColor={item.colors[1]} />
-                </div>
-              </div>
+              <KnotThumbnail nodeId={item.nodeId} colors={item.colors} type={item.type} />
               <div className="history-detail-fields" style={{ flex: 1, display: "flex", gap: "30px" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "10px", fontWeight: "bold", color: "#AAA", textTransform: "uppercase" }}>Tressage</label>

@@ -1,7 +1,52 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import NecklacePreview from "../components/NecklacePreview";
+import CobraPreview from "../components/Debutant/CobraPreview";
+import FishtailPreview from "../components/Debutant/FishtailPreview";
+import LadderRackPreview from "../components/Debutant/LadderRackPreview";
+import SnakeKnotPreview from "../components/Debutant/SnakeKnotPreview";
+import SpiralPreview from "../components/Debutant/SpiralPreview";
+import SquareKnotPreview from "../components/Debutant/SquareKnotPreview";
+import TrilobitePreview from "../components/Intermediaire/TrilobitePreview";
+import CrownSinnetPreview from "../components/Intermediaire/CrownSinnetPreview";
+import TressageRondPreview from "../components/Intermediaire/TressageRondPreview";
+import ViperWeavePreview from "../components/Intermediaire/ViperWeavePreview";
+import KingCobraPreview from "../components/Avance/KingCobraPreview";
+import SanctifiedPreview from "../components/Avance/SanctifiedPreview";
+import SharkJawbonePreview from "../components/Avance/SharkJawbonePreview";
+import AztecSunBarPreview from "../components/Expert/AztecSunBarPreview";
+import CelticBarPreview from "../components/Expert/CelticBarPreview";
+import MadMaxPreview from "../components/Expert/MadMaxPreview";
 import { THEME } from "../shared/theme";
+
+const KNOT_COMPONENTS: Record<string, React.ComponentType<any>> = {
+  Cobra: CobraPreview,
+  Fishtail: FishtailPreview,
+  LadderRack: LadderRackPreview,
+  SnakeKnot: SnakeKnotPreview,
+  Spiral: SpiralPreview,
+  SquareKnot: SquareKnotPreview,
+  Trilobite: TrilobitePreview,
+  CrownSinnet: CrownSinnetPreview,
+  TressageRond: TressageRondPreview,
+  ViperWeave: ViperWeavePreview,
+  KingCobra: KingCobraPreview,
+  Sanctified: SanctifiedPreview,
+  SharkJawbone: SharkJawbonePreview,
+  AztecSunBar: AztecSunBarPreview,
+  CelticBar: CelticBarPreview,
+  MadMax: MadMaxPreview,
+};
+
+function KnotThumbnail({ nodeId, colors, type }: { nodeId: string; colors: string[]; type: string }) {
+  const Component = KNOT_COMPONENTS[nodeId] ?? CobraPreview;
+  return (
+    <div style={{ width: "203px", height: "70px", background: "#ddd6cc", borderRadius: "12px", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      <div style={{ transform: "scale(0.5)", transformOrigin: "center center" }}>
+        <Component color1={colors[0]} color2={colors[1] || colors[0]} accessoryType={type} orientation="horizontal" />
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -48,15 +93,8 @@ export default function Dashboard() {
 
       <h1 style={{ fontSize: "28px", fontWeight: "900", color: THEME.colors.textMain, marginBottom: "20px" }}>Tableau de bord</h1>
 
-      {/* SECTION BIENVENUE — visible uniquement si aucun projet */}
       {showWelcome && (
-        <div style={{
-          background: "#fff",
-          borderRadius: THEME.radius.card,
-          border: `2px solid ${THEME.colors.accent}`,
-          padding: "24px",
-          marginBottom: "30px",
-        }}>
+        <div style={{ background: "#fff", borderRadius: THEME.radius.card, border: `2px solid ${THEME.colors.accent}`, padding: "24px", marginBottom: "30px" }}>
           <div style={{ fontSize: "20px", marginBottom: "8px" }}>👋 Bienvenue sur CordesLab !</div>
           <p style={{ color: THEME.colors.textMuted, fontSize: "14px", marginBottom: "16px", lineHeight: 1.6 }}>
             CordesLab est un <strong>calculateur de longueurs de paracorde</strong> pour confectionner soi-même ses accessoires pour chien (colliers, poignées, laisses...).
@@ -77,10 +115,7 @@ export default function Dashboard() {
               </div>
             ))}
           </div>
-          <button
-            onClick={() => navigate("/newcalc")}
-            style={{ background: THEME.colors.accent, color: "#fff", border: "none", padding: "12px 30px", borderRadius: "12px", fontWeight: "bold", cursor: "pointer", fontSize: "14px" }}
-          >
+          <button onClick={() => navigate("/newcalc")} style={{ background: THEME.colors.accent, color: "#fff", border: "none", padding: "12px 30px", borderRadius: "12px", fontWeight: "bold", cursor: "pointer", fontSize: "14px" }}>
             Commencer mon premier calcul →
           </button>
         </div>
@@ -107,11 +142,7 @@ export default function Dashboard() {
               border: `1px solid ${THEME.colors.border}`
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-                <div style={{ width: "70px", height: "45px", background: THEME.colors.primaryBg, borderRadius: "12px", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <div style={{ transform: "scale(0.35) rotate(90deg)" }}>
-                    <NecklacePreview knotId={p.nodeId} primaryColor={p.colors[0]} secondaryColor={p.colors[1]} />
-                  </div>
-                </div>
+                <KnotThumbnail nodeId={p.nodeId} colors={p.colors} type={p.type} />
                 <div>
                   <div style={{ fontWeight: "900", fontSize: "15px", color: THEME.colors.textMain }}>{p.name}</div>
                   <div style={{ fontSize: "12px", color: THEME.colors.textMuted }}>{p.date || "21/04/2026"} • {p.knotName} • {p.estimatedTime || "0h 00"}</div>

@@ -20,8 +20,10 @@ import AztecSunBarPreview from "../components/Expert/AztecSunBarPreview";
 import CelticBarPreview from "../components/Expert/CelticBarPreview";
 import MadMaxPreview from "../components/Expert/MadMaxPreview";
 
+import { getUserPlan } from "../App";
+
 type Plan = "Atelier" | "Creator" | "Pro";
-const USER_PLAN: Plan = "Atelier";
+const USER_PLAN: Plan = getUserPlan();
 
 const COLORS_DATABASE = [
   { name: "Noir Satin",     hex: "#1F1F1F" },
@@ -48,6 +50,17 @@ const ACCESSORIES_CONFIG = {
 type AccessoryKey = keyof typeof ACCESSORIES_CONFIG;
 type LengthUnit = "cm" | "m" | "in";
 type RopeSize = "3mm" | "4mm";
+type HarnessSize = "XS" | "S" | "M" | "L" | "XL";
+
+const HARNESS_SIZES: { value: HarnessSize; label: string; lengthCm: number; poitrail: string }[] = [
+  { value: "XS", label: "XS", lengthCm: 35, poitrail: "30-40 cm · 1-5 kg" },
+  { value: "S",  label: "S",  lengthCm: 46, poitrail: "40-52 cm · 5-10 kg" },
+  { value: "M",  label: "M",  lengthCm: 58, poitrail: "52-65 cm · 10-20 kg" },
+  { value: "L",  label: "L",  lengthCm: 72, poitrail: "65-80 cm · 20-35 kg" },
+  { value: "XL", label: "XL", lengthCm: 90, poitrail: "80-100 cm · 35+ kg" },
+];
+
+const HARNESS_RECOMMENDED_KNOTS = ["Cobra", "Fishtail", "TressageRond", "ViperWeave", "KingCobra"];
 
 const UNIT_OPTIONS: { value: LengthUnit; label: string }[] = [
   { value: "cm", label: "cm" },
@@ -102,19 +115,29 @@ const isAccLocked  = (lock: string | null) => !lock || (USER_PLAN as string) ===
 const isKnotLocked = (order: number) => (USER_PLAN as string) === "Pro" ? false : (USER_PLAN as string) === "Creator" ? order > 3 : order > 2;
 
 const getRefLen = (type: AccessoryKey, model: string) => {
-  if (type === "LAISSE")  return model.includes("Multiposition") ? 220 : 120;
+  if (type === "LAISSE") {
+    if (model === "Multiposition avec poignée") return 245;
+    if (model === "Multiposition sans poignée") return 220;
+    return 120;
+  }
   if (type === "POIGNEE") return model === "Confort" ? 35 : 25;
   if (type === "HARNAIS") return model === "En Y" ? 70 : 80;
   if (type === "JOUETS")  return model === "Tug" ? 35 : 20;
   return 35;
 };
+
 const getTimeMult = (type: AccessoryKey, model: string) => {
-  if (type === "LAISSE")  return model.includes("Multiposition") ? 1.45 : 1.2;
+  if (type === "LAISSE") {
+    if (model === "Multiposition avec poignée") return 1.55;
+    if (model === "Multiposition sans poignée") return 1.45;
+    return 1.2;
+  }
   if (type === "POIGNEE") return model === "Confort" ? 1.1 : 0.9;
   if (type === "HARNAIS") return model === "En Y" ? 1.35 : 1.45;
   if (type === "JOUETS")  return model === "Tug" ? 0.95 : 0.8;
   return model === "Martingale" || model === "Adaptateur Biothane" ? 1.15 : 1;
 };
+
 const getEstMin = (base: number, cm: number, type: AccessoryKey, model: string) =>
   Math.max(15, Math.round(base * Math.min(2.6, Math.max(0.75, cm / getRefLen(type, model))) * getTimeMult(type, model)));
 
@@ -133,7 +156,7 @@ const safeWrite = (key: string, val: any) => {
 type FormData = {
   name: string; type: AccessoryKey; model: string; difficulty: string; nodeId: string;
   length: number; unit: LengthUnit; colorCount: number; roundingValue: number;
-  secureMode: boolean; colors: string[]; ropeSize: RopeSize;
+  secureMode: boolean; colors: string[]; ropeSize: RopeSize; harnessSize: HarnessSize;
 };
 
 type StoredProject = {
@@ -215,7 +238,7 @@ const INITIAL_FORM: FormData = {
   difficulty: "Débutant", nodeId: "Cobra", length: 35, unit: "cm",
   colorCount: 2, roundingValue: 10, secureMode: true,
   colors: [COLORS_DATABASE[6].hex, COLORS_DATABASE[1].hex, "#1F1F1F", "#FFFFFF"],
-  ropeSize: "4mm",
+  ropeSize: "4mm", harnessSize: "M",
 };
 
 export default function NewCalc() {
@@ -240,22 +263,31 @@ export default function NewCalc() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [isPaused]);
 
+  const effectiveLength = useMemo(() => {
+    if (formData.type === "HARNAIS") {
+      return HARNESS_SIZES.find(s => s.value === formData.harnessSize)?.lengthCm ?? 58;
+    }
+    return toCm(formData.length, formData.unit);
+  }, [formData.type, formData.harnessSize, formData.length, formData.unit]);
+
   const knot = useMemo(() => KNOTS_REGISTRY.find((k) => k.id === formData.nodeId) ?? KNOTS_REGISTRY[0], [formData.nodeId]);
 
   const results = useMemo(() => {
     const margin     = formData.secureMode ? 1.1 : 1.0;
     const ropeFactor = formData.ropeSize === "3mm" ? 0.85 : 1.0;
-    const lengthCm   = toCm(formData.length, formData.unit);
+    const lengthCm   = effectiveLength;
     const roundingCm = Math.max(1, toCm(formData.roundingValue, formData.unit));
     const perColor   = Math.ceil((lengthCm * knot.factor * ropeFactor * margin) / formData.colorCount / roundingCm) * roundingCm;
     const estMin     = getEstMin(knot.baseMinutes, lengthCm, formData.type, formData.model);
+    const isHarnessEstimated = formData.type === "HARNAIS" || formData.type === "JOUETS";
     return {
       perColor, ame: lengthCm, estimatedMinutes: estMin, estimatedTime: fmtDur(estMin),
       totalBrins: perColor * formData.colorCount,
       totalGeneral: perColor * formData.colorCount + lengthCm,
-      knotName: knot.name, factor: knot.factor, is3D: knot.is3D, calibrated: knot.calibrated,
+      knotName: knot.name, factor: knot.factor, is3D: knot.is3D, calibrated: knot.calibrated && !isHarnessEstimated,
+      isHarnessEstimated,
     };
-  }, [formData, knot]);
+  }, [formData, knot, effectiveLength]);
 
   const currentPalette = useMemo(() => formData.colors.slice(0, formData.colorCount), [formData.colors, formData.colorCount]);
 
@@ -289,7 +321,7 @@ export default function NewCalc() {
       type: formData.type, model: formData.model,
       difficulty: formData.difficulty, nodeId: formData.nodeId,
       knotName: results.knotName, estimatedTime: results.estimatedTime,
-      length: toCm(formData.length, formData.unit), colorCount: formData.colorCount,
+      length: effectiveLength, colorCount: formData.colorCount,
       roundingValue: toCm(formData.roundingValue, formData.unit),
       secureMode: formData.secureMode, colors: currentPalette,
       results: { ...results },
@@ -304,7 +336,7 @@ export default function NewCalc() {
     safeWrite(STORAGE_KEYS.LAST_PROJECT, project);
     window.dispatchEvent(new Event("cordeslab:projects-updated"));
     return project;
-  }, [formData, results, currentPalette, time]);
+  }, [formData, results, currentPalette, time, effectiveLength]);
 
   const handleCalculateAndSave = useCallback(() => {
     saveProject();
@@ -336,7 +368,7 @@ export default function NewCalc() {
       doc.setTextColor(...C.ink); doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.text("CordesLab", mX, 16);
       doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...C.muted);
       doc.text(`Date : ${pdfDate}`, pageW-mX, 16, { align: "right" });
-      doc.text(`Produit : ${ACCESSORIES_CONFIG[formData.type].label}`, mX, 22);
+      doc.text(`Produit : ${ACCESSORIES_CONFIG[formData.type].label}${formData.type === "HARNAIS" ? ` · Taille ${formData.harnessSize}` : ""}`, mX, 22);
       doc.setFont("helvetica","bold"); doc.setFontSize(12.5); doc.setTextColor(...C.ink);
       doc.text(`Projet ${formData.name}`, mX, 27);
       doc.setDrawColor(...C.border); doc.setLineWidth(0.7); doc.line(mX, 33.5, pageW-mX, 33.5);
@@ -409,13 +441,13 @@ export default function NewCalc() {
       accentCard(mX, sumY, cW, sumH, C.green);
       const lX=mX+10; let sY=62;
       doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(...C.ink);
-      doc.text(`Produit : ${ACCESSORIES_CONFIG[formData.type].label}`, lX, sY);
+      doc.text(`Produit : ${ACCESSORIES_CONFIG[formData.type].label}${formData.type === "HARNAIS" ? ` · Taille ${formData.harnessSize}` : ""}`, lX, sY);
       doc.text(`${formData.colorCount} couleurs`, mX+128, sY);
       doc.setFillColor(...C.green); doc.roundedRect(pageW-mX-28, 58.2, 22, 6.8, 2.4, 2.4, "F");
       doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(...C.white); doc.text("estimé", pageW-mX-17, 62.8, { align:"center" });
       sY+=9.5;
       doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(...C.ink);
-      doc.text(`Nœud : ${results.knotName} · Longueur : ${formData.length} ${formData.unit} · Ø ${formData.ropeSize}`, lX, sY);
+      doc.text(`Nœud : ${results.knotName} · ${formData.type === "HARNAIS" ? `Taille ${formData.harnessSize}` : `Longueur : ${formData.length} ${formData.unit}`} · Ø ${formData.ropeSize}`, lX, sY);
       doc.text(`Arrondi : ${formData.roundingValue} ${formData.unit} · Unité : ${formData.unit}`, mX+128, sY);
       sY+=11;
       colorNames.forEach((n,i) => doc.text(n, lX, sY+i*6));
@@ -446,17 +478,18 @@ export default function NewCalc() {
       footer(2);
       doc.save(`cordeslab-${formData.name}.pdf`);
     } catch (e) { console.error("PDF error:", e); }
-  }, [formData, results, currentPalette, time]);
+  }, [formData, results, currentPalette, time, effectiveLength]);
 
   const KnotComponent = knot.component as any;
+  const isHarness = formData.type === "HARNAIS";
+  const currentHarnessSize = HARNESS_SIZES.find(s => s.value === formData.harnessSize)!;
 
   return (
     <div style={{ background: "#EAE3D2", minHeight: "100vh" }} className="newcalc-padding">
-      {step === 1 ? (
+      {step === 1 && (
         <div className="newcalc-grid">
-          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
-            {/* GÉNÉRAL */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             <div style={cardStyle}>
               <h3 style={h3Style}>GÉNÉRAL</h3>
               <input type="text" value={formData.name} onChange={(e) => setFormData((p) => ({ ...p, name: e.target.value }))} style={inputStyle} />
@@ -470,7 +503,6 @@ export default function NewCalc() {
               </select>
             </div>
 
-            {/* NIVEAU ET NŒUD */}
             <div style={cardStyle}>
               <h3 style={{ ...h3Style, display: "flex", alignItems: "center" }}>
                 NIVEAU ET NŒUD
@@ -482,13 +514,17 @@ export default function NewCalc() {
               <select style={{ ...inputStyle, marginTop: "15px" }} value={formData.nodeId} onChange={(e) => setFormData((p) => ({ ...p, nodeId: e.target.value }))}>
                 {KNOTS_REGISTRY.filter((k) => k.difficulty === formData.difficulty).map((k) => (
                   <option key={k.id} value={k.id} disabled={isKnotLocked(k.order)}>
-                    {isKnotLocked(k.order) ? `🔒 ${k.name}` : k.name}
+                    {isKnotLocked(k.order) ? `🔒 ${k.name}` : isHarness && HARNESS_RECOMMENDED_KNOTS.includes(k.id) ? `⭐ ${k.name}` : k.name}
                   </option>
                 ))}
               </select>
+              {isHarness && (
+                <div style={{ fontSize: "11px", color: "#006D6F", marginTop: "8px" }}>
+                  ⭐ = nœud recommandé pour les harnais
+                </div>
+              )}
             </div>
 
-            {/* PALETTE */}
             <div style={cardStyle}>
               <h3 style={h3Style}>PALETTE</h3>
               <select style={inputStyle} value={formData.colorCount} onChange={(e) => setFormData((p) => ({ ...p, colorCount: Number(e.target.value) }))}>
@@ -501,12 +537,11 @@ export default function NewCalc() {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-            {/* APERÇU */}
             <div style={cardStyle}>
               <h3 style={h3Style}>APERÇU</h3>
               <h4 style={{ color: "#006D6F", textAlign: "center", marginBottom: "5px", fontWeight: "bold" }}>{results.knotName.toUpperCase()}</h4>
-              <div style={{ fontSize: "14px", color: "#8C8C8C", textAlign: "center", marginBottom: results.calibrated ? "15px" : "8px" }}>Durée approximative : {results.estimatedTime}</div>
-              {!results.calibrated && (
+              <div style={{ fontSize: "14px", color: "#8C8C8C", textAlign: "center", marginBottom: "8px" }}>Durée approximative : {results.estimatedTime}</div>
+              {(results.isHarnessEstimated || !results.calibrated) && (
                 <div style={{ fontSize: "11px", color: "#B8860B", background: "#FFF8E1", border: "1px solid #FFD700", borderRadius: "8px", padding: "5px 10px", textAlign: "center", marginBottom: "10px" }}>
                   ⚠️ Longueurs estimées — pas encore vérifiées sur échantillon réel
                 </div>
@@ -516,31 +551,58 @@ export default function NewCalc() {
               </div>
             </div>
 
-            {/* PARAMÈTRES */}
             <div style={cardStyle}>
               <div style={{ fontSize: "10px", fontWeight: "900", color: "#006D6F", marginBottom: "5px" }}>PARAMÈTRES</div>
               <h2 style={{ fontSize: "24px", fontWeight: "900", marginBottom: "20px" }}>Réglages finaux</h2>
-              <div className="params-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
-                <div>
-                  <label style={labelStyle}>Longueur ({formData.unit})</label>
-                  <input type="number" step={formData.unit==="m"?"0.01":formData.unit==="in"?"0.1":"1"} value={formData.length} onChange={(e) => setFormData((p) => ({ ...p, length: Number(e.target.value) }))} style={inputStyle} />
-                </div>
+
+              {isHarness ? (
                 <div>
                   <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>
-                    Arrondi
-                    <Tooltip text="Les longueurs calculées sont arrondies au multiple de 10 supérieur. Ex : 343 cm avec un arrondi à 10 cm devient 350 cm." />
+                    Taille du chien
+                    <Tooltip text="Sélectionnez la taille correspondant au tour de poitrail de votre chien. Les longueurs sont estimées — calibration en cours." />
                   </label>
-                  <select style={inputStyle} value={formData.roundingValue} onChange={(e) => setFormData((p) => ({ ...p, roundingValue: Number(e.target.value) }))}>
-                    {(formData.unit==="cm"?[5,10,25,50]:formData.unit==="m"?[0.05,0.1,0.25,0.5]:[2,4,10,20]).map((v) => <option key={v} value={v}>{v} {formData.unit}</option>)}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "8px", marginBottom: "10px" }}>
+                    {HARNESS_SIZES.map((s) => (
+                      <div key={s.value} onClick={() => setFormData((p) => ({ ...p, harnessSize: s.value }))}
+                        style={{ padding: "10px 4px", borderRadius: "10px", textAlign: "center", cursor: "pointer", fontWeight: "bold", fontSize: "14px",
+                          background: formData.harnessSize === s.value ? "#006D6F" : "#fff",
+                          color: formData.harnessSize === s.value ? "#fff" : "#333",
+                          border: formData.harnessSize === s.value ? "none" : "1px solid #EAEAEA" }}>
+                        {s.value}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#888", background: "#F9F9F9", borderRadius: "10px", padding: "8px 12px" }}>
+                    Tour de poitrail : <strong>{currentHarnessSize.poitrail}</strong>
+                  </div>
+                </div>
+              ) : (
+                <div className="params-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
+                  <div>
+                    <label style={labelStyle}>Longueur ({formData.unit})</label>
+                    <input type="number" step={formData.unit==="m"?"0.01":formData.unit==="in"?"0.1":"1"} value={formData.length} onChange={(e) => setFormData((p) => ({ ...p, length: Number(e.target.value) }))} style={inputStyle} />
+                  </div>
+                  <div>
+                    <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>
+                      Arrondi
+                      <Tooltip text="Les longueurs calculées sont arrondies au multiple de 10 supérieur. Ex : 343 cm avec un arrondi à 10 cm devient 350 cm." />
+                    </label>
+                    <select style={inputStyle} value={formData.roundingValue} onChange={(e) => setFormData((p) => ({ ...p, roundingValue: Number(e.target.value) }))}>
+                      {(formData.unit==="cm"?[5,10,25,50]:formData.unit==="m"?[0.05,0.1,0.25,0.5]:[2,4,10,20]).map((v) => <option key={v} value={v}>{v} {formData.unit}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {!isHarness && (
+                <div style={{ marginTop: "15px" }}>
+                  <label style={labelStyle}>Unité</label>
+                  <select style={inputStyle} value={formData.unit} onChange={(e) => handleUnitChange(e.target.value as LengthUnit)}>
+                    {UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
                   </select>
                 </div>
-              </div>
-              <div style={{ marginTop: "15px" }}>
-                <label style={labelStyle}>Unité</label>
-                <select style={inputStyle} value={formData.unit} onChange={(e) => handleUnitChange(e.target.value as LengthUnit)}>
-                  {UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
-                </select>
-              </div>
+              )}
+
               <div style={{ marginTop: "15px" }}>
                 <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>
                   Épaisseur corde
@@ -551,36 +613,39 @@ export default function NewCalc() {
                   <option value="3mm">3 mm (fine)</option>
                 </select>
               </div>
-              <div style={{ marginTop: "18px", border: "1px solid #EAEAEA", borderRadius: "22px", padding: "18px 18px 14px", background: "#fff" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
-                  <div>
-                    <div style={{ fontSize: "12px", fontWeight: 900, color: "#1A1A1A", marginBottom: "6px", display: "flex", alignItems: "center" }}>
-                      Mode sécurisé ({formData.secureMode ? "10%" : "0%"})
-                      <Tooltip text="Ajoute 10% de corde en plus pour compenser les variations de tension selon votre façon de tresser. Recommandé pour les débutantes." />
-                    </div>
-                    <div style={{ fontSize: "12px", color: "#8C8C8C", marginBottom: "8px" }}>Marge de sécurité incluse.</div>
-                  </div>
-                  <input type="checkbox" checked={formData.secureMode} onChange={(e) => setFormData((p) => ({ ...p, secureMode: e.target.checked }))} style={{ width: 16, height: 16, accentColor: "#35A5D3", marginTop: "2px" }} />
-                </div>
-                <div style={{ fontSize: "12px", fontWeight: 800, color: "#1A1A1A", marginBottom: "8px" }}>{formData.secureMode ? "Sécurité maximale (10%)" : "Sécurité standard (0%)"}</div>
-                <div style={{ height: "8px", background: "#E9E9E9", borderRadius: "999px", overflow: "hidden" }}>
-                  <div style={{ width: formData.secureMode ? "78%" : "42%", height: "100%", background: "#0A7A78", borderRadius: "999px" }} />
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                <button onClick={handleCalculateAndSave} style={{ ...mainBtn, flex: 2 }}>Calculer et enregistrer</button>
-                <button onClick={handleReset} style={{ ...secBtn, flex: 1 }}>Réinitialiser</button>
-              </div>
-              <div style={{ fontSize: "12px", color: "#888", marginTop: "10px", display: "flex", alignItems: "flex-start", gap: "5px" }}>
-                <span>💡</span>
-                <span>Calcule les longueurs et enregistre automatiquement dans Dashboard, Projets et Historique.</span>
-              </div>
-              {saveMessage && <div style={saveInfoStyle}>{saveMessage}</div>}
             </div>
           </div>
-        </div>
 
-      ) : (
+          <div style={{ ...cardStyle, gridColumn: "1 / -1" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+              <div>
+                <div style={{ fontSize: "12px", fontWeight: 900, color: "#1A1A1A", marginBottom: "6px", display: "flex", alignItems: "center" }}>
+                  Mode sécurisé ({formData.secureMode ? "10%" : "0%"})
+                  <Tooltip text="Ajoute 10% de corde en plus pour compenser les variations de tension selon votre façon de tresser. Recommandé pour les débutantes." />
+                </div>
+                <div style={{ fontSize: "12px", color: "#8C8C8C", marginBottom: "8px" }}>Marge de sécurité incluse.</div>
+              </div>
+              <input type="checkbox" checked={formData.secureMode} onChange={(e) => setFormData((p) => ({ ...p, secureMode: e.target.checked }))} style={{ width: 16, height: 16, accentColor: "#35A5D3", marginTop: "2px" }} />
+            </div>
+            <div style={{ fontSize: "12px", fontWeight: 800, color: "#1A1A1A", marginBottom: "8px" }}>{formData.secureMode ? "Sécurité maximale (10%)" : "Sécurité standard (0%)"}</div>
+            <div style={{ height: "8px", background: "#E9E9E9", borderRadius: "999px", overflow: "hidden", marginBottom: "20px" }}>
+              <div style={{ width: formData.secureMode ? "78%" : "42%", height: "100%", background: "#0A7A78", borderRadius: "999px" }} />
+            </div>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button onClick={handleCalculateAndSave} style={{ ...mainBtn, flex: 2 }}>Calculer et enregistrer</button>
+              <button onClick={handleReset} style={{ ...secBtn, flex: 1 }}>Réinitialiser</button>
+            </div>
+            <div style={{ fontSize: "12px", color: "#888", marginTop: "10px", display: "flex", alignItems: "flex-start", gap: "5px" }}>
+              <span>💡</span>
+              <span>Calcule les longueurs et enregistre automatiquement dans Dashboard, Projets et Historique.</span>
+            </div>
+            {saveMessage && <div style={saveInfoStyle}>{saveMessage}</div>}
+          </div>
+
+        </div>
+      )}
+
+      {step === 2 && (
         <div style={{ background: "#EAE3D2", minHeight: "100vh" }}>
           <div style={{ maxWidth: "850px", margin: "0 auto", background: "#fff", borderRadius: "30px", padding: "40px", boxShadow: "0 10px 30px rgba(0,0,0,0.05)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "30px", gap: "10px", flexWrap: "wrap" }}>
@@ -621,8 +686,10 @@ export default function NewCalc() {
               <div style={{ background: "#1A1A1A", color: "#fff", padding: "20px", borderRadius: "20px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
                   <span style={{ fontSize: "11px", opacity: 0.8 }}>CHRONO RÉEL</span>
-                  <span style={{ fontSize: "9px", background: "rgba(255,255,255,0.15)", color: "#bbb", padding: "2px 6px", borderRadius: "6px", cursor: "help" }}
-                    title="Mesurez le temps réel que vous passez à tresser. Utile pour évaluer votre vitesse et calculer vos tarifs.">
+                  <span
+                    style={{ fontSize: "9px", background: "rgba(255,255,255,0.15)", color: "#bbb", padding: "2px 6px", borderRadius: "6px", cursor: "help" }}
+                    title="Chronométrez votre tressage pour connaître votre temps réel par projet. Indispensable pour fixer un prix de vente juste : temps × tarif horaire = coût de fabrication."
+                  >
                     ? À quoi ça sert
                   </span>
                 </div>
@@ -637,7 +704,7 @@ export default function NewCalc() {
               <button onClick={() => setStep(1)} style={{ ...secBtn, width: "100%", marginTop: 0 }}>Retour</button>
             </div>
             <div style={{ fontSize: "12px", color: "#888", marginTop: "10px", textAlign: "center" }}>
-              Lancez le chrono quand vous commencez à tresser. Mettez en pause si vous vous arrêtez.
+              Lancez le chrono dès que vous commencez à tresser, mettez en pause si vous vous arrêtez. À la fin, vous saurez exactement combien de temps ce projet vous a pris — et combien le facturer.
             </div>
           </div>
         </div>
