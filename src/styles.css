@@ -29,7 +29,6 @@ html,
 body,
 #root {
   min-height: 100%;
-  overflow-x: hidden;
   max-width: 100%;
 }
 
@@ -610,19 +609,30 @@ a {
     display: none;
   }
 
-  /* Boutons accessoires : 5 colonnes comprimées sur une ligne */
+  /* Boutons accessoires : scroll horizontal sur mobile */
   .acc-buttons-wrap {
-    display: grid !important;
-    grid-template-columns: repeat(5, 1fr) !important;
-    gap: 6px !important;
-    overflow: visible !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    gap: 8px !important;
+    padding-bottom: 8px !important;
+    padding-top: 12px !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .acc-buttons-wrap::-webkit-scrollbar {
+    display: none;
   }
 
   .acc-buttons-wrap > div {
-    flex: none !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    font-size: 8px !important;
+    flex: 0 0 72px !important;
+    width: 72px !important;
+    min-width: 72px !important;
+    max-width: 72px !important;
+    font-size: 9px !important;
   }
 
   .newcalc-grid {
@@ -670,22 +680,30 @@ a {
     padding: 12px !important;
   }
 
-  /* Boutons accessoires : 5 colonnes comprimées */
+  /* Boutons accessoires : scroll horizontal */
   .acc-buttons-wrap {
-    display: grid !important;
-    grid-template-columns: repeat(5, 1fr) !important;
-    gap: 4px !important;
-    overflow: visible !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    gap: 8px !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .acc-buttons-wrap::-webkit-scrollbar {
+    display: none;
   }
 
   .acc-buttons-wrap > div {
-    flex: none !important;
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    min-height: 60px !important;
+    flex: 0 0 68px !important;
+    width: 68px !important;
+    min-width: 68px !important;
+    max-width: 68px !important;
+    min-height: 70px !important;
     height: auto !important;
-    font-size: 8px !important;
+    font-size: 9px !important;
   }
 
   .acc-buttons-wrap span[style*="position: absolute"] {
