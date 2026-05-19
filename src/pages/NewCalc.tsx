@@ -525,11 +525,17 @@ export default function NewCalc() {
               )}
             </div>
 
+            {/* PALETTE */}
             <div style={cardStyle}>
               <h3 style={h3Style}>PALETTE</h3>
               <select style={inputStyle} value={formData.colorCount} onChange={(e) => setFormData((p) => ({ ...p, colorCount: Number(e.target.value) }))}>
                 {[1,2,3,4].map((n) => <option key={n} value={n}>{n} couleur(s)</option>)}
               </select>
+              {formData.colorCount > 2 && (
+                <div style={{ fontSize: "11px", color: "#006D6F", background: "#EDF8F5", border: "1px solid #CDE9E1", borderRadius: "8px", padding: "6px 10px", marginTop: "8px" }}>
+                  ℹ️ L'aperçu 3D affiche uniquement les 2 premières couleurs. Les couleurs supplémentaires seront bien utilisées dans votre tressage.
+                </div>
+              )}
               <div className="params-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginTop: "15px" }}>
                 {currentPalette.map((c, i) => <ColorRow key={i} color={c} index={i} onChange={handleColorChange} />)}
               </div>
@@ -659,8 +665,8 @@ export default function NewCalc() {
               </div>
             </div>
 
-            <div id="pdf-knot-preview" style={{ background: "#F9F9F9", borderRadius: "24px", overflow: "hidden", height: "180px", margin: "20px 0", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", transform: "scale(1.18)", transformOrigin: "center center" }}>
+            <div id="pdf-knot-preview" style={{ background: "#F9F9F9", borderRadius: "24px", overflow: "hidden", height: "160px", margin: "20px 0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ transform: "scale(0.85)", transformOrigin: "center center", flexShrink: 0 }}>
                 <KnotComponent ref={knotRef} color1={formData.colors[0]} color2={formData.colors[1]} accessoryType={formData.type} orientation="horizontal" />
               </div>
             </div>
