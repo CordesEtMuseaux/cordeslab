@@ -21,6 +21,7 @@ import CelticBarPreview from "../components/Expert/CelticBarPreview";
 import MadMaxPreview from "../components/Expert/MadMaxPreview";
 
 import { getUserPlan } from "../App";
+import { GUIDES_ETSY } from "../data/etsyGuides";
 
 type Plan = "Atelier" | "Creator" | "Pro";
 const USER_PLAN: Plan = getUserPlan();
@@ -291,6 +292,11 @@ export default function NewCalc() {
 
   const currentPalette = useMemo(() => formData.colors.slice(0, formData.colorCount), [formData.colors, formData.colorCount]);
 
+  const currentGuide = useMemo(() => {
+    const key = `${formData.nodeId}|${formData.type}`;
+    return GUIDES_ETSY[key] ?? null;
+  }, [formData.nodeId, formData.type]);
+
   const handleReset = useCallback(() => { setFormData(INITIAL_FORM); setTime(0); setIsPaused(true); setSaveMessage(""); }, []);
   const handleColorChange = useCallback((i: number, value: string) => {
     setFormData((prev) => { const colors = [...prev.colors]; colors[i] = value; return { ...prev, colors }; });
@@ -525,7 +531,6 @@ export default function NewCalc() {
               )}
             </div>
 
-            {/* PALETTE */}
             <div style={cardStyle}>
               <h3 style={h3Style}>PALETTE</h3>
               <select style={inputStyle} value={formData.colorCount} onChange={(e) => setFormData((p) => ({ ...p, colorCount: Number(e.target.value) }))}>
@@ -551,6 +556,23 @@ export default function NewCalc() {
                 <div style={{ fontSize: "11px", color: "#B8860B", background: "#FFF8E1", border: "1px solid #FFD700", borderRadius: "8px", padding: "5px 10px", textAlign: "center", marginBottom: "10px" }}>
                   ⚠️ Longueurs estimées — pas encore vérifiées sur échantillon réel
                 </div>
+              )}
+              {currentGuide && (
+                <a
+                  href={currentGuide.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "flex", alignItems: "center", gap: "8px",
+                    background: "#FFF8F0", border: "1px solid #F0C080",
+                    borderRadius: "10px", padding: "8px 12px",
+                    marginBottom: "10px", textDecoration: "none",
+                    color: "#8B5A00", fontSize: "12px", fontWeight: 600,
+                  }}
+                >
+                  <span style={{ fontSize: "16px" }}>📖</span>
+                  <span>Guide disponible sur Etsy → {currentGuide.title}</span>
+                </a>
               )}
               <div style={previewBox} className="knot-preview-wrap">
                 <KnotComponent ref={knotRef} color1={formData.colors[0]} color2={formData.colors[1]} accessoryType={formData.type} orientation="horizontal" />

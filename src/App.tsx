@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, NavLink, Route, Routes } from "react-router-dom";
+import { Link, NavLink, Route, Routes, useLocation } from "react-router-dom";
 
 import Dashboard from "./pages/Dashboard";
 import Projects from "./pages/Projects";
@@ -26,7 +26,6 @@ export function getUserPlan(): "Atelier" | "Creator" | "Pro" {
     if (plan === "Pro" && expiry && Date.now() < parseInt(expiry)) {
       return "Pro";
     }
-    // Plan expiré : on nettoie
     localStorage.removeItem(STORAGE_KEY_PLAN);
     localStorage.removeItem(STORAGE_KEY_EXPIRY);
   } catch { /* ignore */ }
@@ -41,6 +40,26 @@ function activateProFromToken(token: string): boolean {
     localStorage.setItem(STORAGE_KEY_EXPIRY, String(expiry));
     return true;
   } catch { return false; }
+}
+
+// ─── Suivi Google Analytics des routes React ─────────────────────────────────
+
+declare global {
+  interface Window {
+    gtag?: (...args: any[]) => void;
+  }
+}
+
+function usePageTracking() {
+  const location = useLocation();
+  useEffect(() => {
+    if (typeof window.gtag === "function") {
+      window.gtag("event", "page_view", {
+        page_path: location.pathname,
+        page_title: document.title,
+      });
+    }
+  }, [location]);
 }
 
 // ─── Bannière installation PWA ────────────────────────────────────────────────
@@ -209,27 +228,27 @@ function TopNav() {
   );
 }
 
-// ─── App principale ───────────────────────────────────────────────────────────
+// ─── Composant interne avec accès au router ───────────────────────────────────
 
-export default function App() {
+function AppInner() {
   const [showActivation, setShowActivation] = useState(false);
 
+  usePageTracking();
+
   useEffect(() => {
-    // Lecture du token dans l'URL
     const params = new URLSearchParams(window.location.search);
     const token  = params.get("token");
     if (token) {
       const activated = activateProFromToken(token);
       if (activated) {
         setShowActivation(true);
-        // Nettoie l'URL sans recharger la page
         window.history.replaceState({}, "", window.location.pathname);
       }
     }
   }, []);
 
   return (
-    <div style={{ width: '100%' }}>
+    <div style={{ width: "100%" }}>
       <TopNav />
       <Routes>
         <Route path="/"          element={<Dashboard />} />
@@ -247,4 +266,10 @@ export default function App() {
       )}
     </div>
   );
+}
+
+// ─── App principale ───────────────────────────────────────────────────────────
+
+export default function App() {
+  return <AppInner />;
 }
