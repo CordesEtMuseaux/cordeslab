@@ -23,21 +23,48 @@ import MadMaxPreview from "../components/Expert/MadMaxPreview";
 import { getUserPlan } from "../App";
 import { GUIDES_ETSY } from "../data/etsyGuides";
 
-type Plan = "Atelier" | "Creator" | "Pro";
-const USER_PLAN: Plan = getUserPlan();
+// Nœuds sans âme structurelle
+const KNOTS_WITHOUT_AME = ["TressageRond"];
+
+// ─── Facteur dynamique Tressage Rond selon nombre de couleurs ─────────────────
+// 2 couleurs = 4 brins → facteur 10 (calibré jouet balle 40cm)
+// 3 couleurs = 6 brins → facteur 14 (calibré laisse 230cm)
+// 4 couleurs = 8 brins → facteur 18 (estimé)
+const getTressageRondFactor = (colorCount: number): number => {
+  if (colorCount <= 2) return 10;
+  if (colorCount === 3) return 14;
+  return 18;
+};
 
 const COLORS_DATABASE = [
-  { name: "Noir Satin",     hex: "#1F1F1F" },
-  { name: "Blanc Soie",     hex: "#FFFFFF" },
-  { name: "Néon Turquoise", hex: "#00E5EE" },
-  { name: "Rouge Impérial", hex: "#ED2939" },
-  { name: "Or",             hex: "#FFD700" },
-  { name: "Forêt Profonde", hex: "#013220" },
-  { name: "Caramel",        hex: "#C68E17" },
-  { name: "Bleu Royal",     hex: "#002366" },
-  { name: "Orange",         hex: "#FF8C00" },
-  { name: "Gris",           hex: "#808080" },
-  { name: "Arc-en-ciel",    hex: "url(#rainbowGrad)" },
+  // Neutres
+  { name: "Noir",              hex: "#1A1A1A" },
+  { name: "Blanc",             hex: "#FFFFFF" },
+  { name: "Gris Acier",        hex: "#71797E" },
+  { name: "Gris Clair",        hex: "#C0C0C0" },
+  { name: "Beige",             hex: "#D4B896" },
+  // Chauds
+  { name: "Rouge Impérial",    hex: "#ED2939" },
+  { name: "Rouge Corail",      hex: "#FF6B6B" },
+  { name: "Orange Vif",        hex: "#FF8C00" },
+  { name: "Jaune Soleil",      hex: "#FFD700" },
+  { name: "Or",                hex: "#CFB53B" },
+  { name: "Caramel",           hex: "#C68E17" },
+  { name: "Marron Chocolat",   hex: "#7B3F00" },
+  // Froids
+  { name: "Bleu Royal",        hex: "#002366" },
+  { name: "Bleu Ciel",         hex: "#87CEEB" },
+  { name: "Bleu Marine",       hex: "#001F5B" },
+  { name: "Turquoise",         hex: "#00E5EE" },
+  { name: "Vert Forêt",        hex: "#013220" },
+  { name: "Vert Menthe",       hex: "#3EB489" },
+  { name: "Vert Olive",        hex: "#808000" },
+  // Roses / Violets
+  { name: "Rose Fuchsia",      hex: "#FF007F" },
+  { name: "Rose Poudré",       hex: "#FFB6C1" },
+  { name: "Violet",            hex: "#8B00FF" },
+  { name: "Lavande",           hex: "#B57EDC" },
+  { name: "Bordeaux",          hex: "#800020" },
 ];
 
 const ACCESSORIES_CONFIG = {
@@ -45,7 +72,7 @@ const ACCESSORIES_CONFIG = {
   POIGNEE: { label: "Poignée", icon: "✋", lock: "Creator", models: ["Simple", "Confort"] },
   LAISSE:  { label: "Laisse",  icon: "🦮", lock: "Pro",     models: ["1m20", "Multiposition sans poignée", "Multiposition avec poignée"] },
   HARNAIS: { label: "Harnais", icon: "🎗️", lock: "Pro",    models: ["En Y", "En H"] },
-  JOUETS:  { label: "Jouets",  icon: "🎾", lock: "Pro",     models: ["Balle", "Tug"] },
+  JOUETS: { label: "Jouets", icon: "🎾", lock: "Pro", models: ["Balle avec corde", "Tug simple", "Tug double poignée"] },
 } as const;
 
 type AccessoryKey = keyof typeof ACCESSORIES_CONFIG;
@@ -112,8 +139,19 @@ const equivUnit  = (u: LengthUnit): LengthUnit => u === "cm" ? "in" : "cm";
 const fmtDur     = (min: number) => `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, "0")}`;
 const fmtTime    = (s: number) => `${Math.floor(s / 3600)}h ${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}m ${String(s % 60).padStart(2, "0")}s`;
 
-const isAccLocked  = (lock: string | null) => !lock || (USER_PLAN as string) === "Pro" ? false : (USER_PLAN as string) === "Creator" ? lock === "Pro" : true;
-const isKnotLocked = (order: number) => (USER_PLAN as string) === "Pro" ? false : (USER_PLAN as string) === "Creator" ? order > 3 : order > 2;
+// ─── Fonctions dynamiques — lisent getUserPlan() à chaque appel ───────────────
+const isAccLocked  = (lock: string | null) => {
+  const plan = getUserPlan();
+  if (!lock || plan === "Pro") return false;
+  if (plan === "Creator") return lock === "Pro";
+  return true;
+};
+const isKnotLocked = (order: number) => {
+  const plan = getUserPlan();
+  if (plan === "Pro") return false;
+  if (plan === "Creator") return order > 3;
+  return order > 2;
+};
 
 const getRefLen = (type: AccessoryKey, model: string) => {
   if (type === "LAISSE") {
@@ -158,6 +196,7 @@ type FormData = {
   name: string; type: AccessoryKey; model: string; difficulty: string; nodeId: string;
   length: number; unit: LengthUnit; colorCount: number; roundingValue: number;
   secureMode: boolean; colors: string[]; ropeSize: RopeSize; harnessSize: HarnessSize;
+  harnessCustomLength: number;
 };
 
 type StoredProject = {
@@ -238,8 +277,8 @@ const INITIAL_FORM: FormData = {
   name: "Nouveau Projet", type: "COLLIER", model: "Boucle plastique",
   difficulty: "Débutant", nodeId: "Cobra", length: 35, unit: "cm",
   colorCount: 2, roundingValue: 10, secureMode: true,
-  colors: [COLORS_DATABASE[6].hex, COLORS_DATABASE[1].hex, "#1F1F1F", "#FFFFFF"],
-  ropeSize: "4mm", harnessSize: "M",
+  colors: [COLORS_DATABASE[6].hex, COLORS_DATABASE[0].hex, COLORS_DATABASE[2].hex, COLORS_DATABASE[1].hex],
+  ropeSize: "4mm", harnessSize: "M", harnessCustomLength: 58,
 };
 
 export default function NewCalc() {
@@ -248,6 +287,8 @@ export default function NewCalc() {
   const [isPaused, setIsPaused]       = useState(true);
   const [saveMessage, setSaveMessage] = useState("");
   const [formData, setFormData]       = useState<FormData>(INITIAL_FORM);
+
+  const userPlan = getUserPlan();
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const knotRef  = useRef<KnotPreviewHandle | null>(null);
@@ -265,30 +306,43 @@ export default function NewCalc() {
   }, [isPaused]);
 
   const effectiveLength = useMemo(() => {
-    if (formData.type === "HARNAIS") {
-      return HARNESS_SIZES.find(s => s.value === formData.harnessSize)?.lengthCm ?? 58;
-    }
+    if (formData.type === "HARNAIS") return Math.max(1, formData.harnessCustomLength);
     return toCm(formData.length, formData.unit);
-  }, [formData.type, formData.harnessSize, formData.length, formData.unit]);
+  }, [formData.type, formData.harnessCustomLength, formData.length, formData.unit]);
 
   const knot = useMemo(() => KNOTS_REGISTRY.find((k) => k.id === formData.nodeId) ?? KNOTS_REGISTRY[0], [formData.nodeId]);
+
+  const hasNoAme = KNOTS_WITHOUT_AME.includes(formData.nodeId);
 
   const results = useMemo(() => {
     const margin     = formData.secureMode ? 1.1 : 1.0;
     const ropeFactor = formData.ropeSize === "3mm" ? 0.85 : 1.0;
     const lengthCm   = effectiveLength;
     const roundingCm = Math.max(1, toCm(formData.roundingValue, formData.unit));
-    const perColor   = Math.ceil((lengthCm * knot.factor * ropeFactor * margin) / formData.colorCount / roundingCm) * roundingCm;
+
+    // Facteur dynamique pour TressageRond selon colorCount, fixe pour les autres
+    const effectiveFactor = formData.nodeId === "TressageRond"
+      ? getTressageRondFactor(formData.colorCount)
+      : knot.factor;
+
+    const perColor   = Math.ceil((lengthCm * effectiveFactor * ropeFactor * margin) / formData.colorCount / roundingCm) * roundingCm;
     const estMin     = getEstMin(knot.baseMinutes, lengthCm, formData.type, formData.model);
     const isHarnessEstimated = formData.type === "HARNAIS" || formData.type === "JOUETS";
+    const totalBrins = perColor * formData.colorCount;
+    const ame = hasNoAme ? 0 : lengthCm;
+
+    // TressageRond calibré pour 2 et 3 couleurs, estimé pour 4
+    const isTressageRondCalibrated = formData.nodeId === "TressageRond" && formData.colorCount <= 3;
+
     return {
-      perColor, ame: lengthCm, estimatedMinutes: estMin, estimatedTime: fmtDur(estMin),
-      totalBrins: perColor * formData.colorCount,
-      totalGeneral: perColor * formData.colorCount + lengthCm,
-      knotName: knot.name, factor: knot.factor, is3D: knot.is3D, calibrated: knot.calibrated && !isHarnessEstimated,
+      perColor, ame, estimatedMinutes: estMin, estimatedTime: fmtDur(estMin),
+      totalBrins,
+      totalGeneral: totalBrins + ame,
+      knotName: knot.name, factor: effectiveFactor, is3D: knot.is3D,
+      calibrated: (knot.calibrated || isTressageRondCalibrated) && !isHarnessEstimated,
       isHarnessEstimated,
     };
-  }, [formData, knot, effectiveLength]);
+  }, [formData, knot, effectiveLength, hasNoAme]);
 
   const currentPalette = useMemo(() => formData.colors.slice(0, formData.colorCount), [formData.colors, formData.colorCount]);
 
@@ -315,6 +369,11 @@ export default function NewCalc() {
       const rCm = toCm(prev.roundingValue, prev.unit);
       return { ...prev, unit: nextUnit, length: roundDisp(fromCm(lCm, nextUnit), nextUnit), roundingValue: roundDisp(fromCm(rCm, nextUnit), nextUnit) };
     });
+  }, []);
+
+  const handleHarnessSizeChange = useCallback((size: HarnessSize) => {
+    const s = HARNESS_SIZES.find(h => h.value === size);
+    setFormData((prev) => ({ ...prev, harnessSize: size, harnessCustomLength: s ? s.lengthCm : prev.harnessCustomLength }));
   }, []);
 
   const saveProject = useCallback((): StoredProject => {
@@ -374,7 +433,7 @@ export default function NewCalc() {
       doc.setTextColor(...C.ink); doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.text("CordesLab", mX, 16);
       doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...C.muted);
       doc.text(`Date : ${pdfDate}`, pageW-mX, 16, { align: "right" });
-      doc.text(`Produit : ${ACCESSORIES_CONFIG[formData.type].label}${formData.type === "HARNAIS" ? ` · Taille ${formData.harnessSize}` : ""}`, mX, 22);
+      doc.text(`Produit : ${ACCESSORIES_CONFIG[formData.type].label}${formData.type === "HARNAIS" ? ` · Taille ${formData.harnessSize} · ${formData.harnessCustomLength} cm` : ""}`, mX, 22);
       doc.setFont("helvetica","bold"); doc.setFontSize(12.5); doc.setTextColor(...C.ink);
       doc.text(`Projet ${formData.name}`, mX, 27);
       doc.setDrawColor(...C.border); doc.setLineWidth(0.7); doc.line(mX, 33.5, pageW-mX, 33.5);
@@ -428,18 +487,20 @@ export default function NewCalc() {
       const tableEndY = (doc as any).lastAutoTable.finalY ?? 150;
       const ameSY = tableEndY + 14;
       let ameY: number;
-      if (ameY = ameSY+15, ameY+56 > pageH-18) { doc.addPage(); bg(); header(); section(38,"Âme",C.green); ameY=53; }
-      else { section(ameSY,"Âme",C.green); }
-      doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(...C.ink);
-      doc.text("Âme(s) : x1", mX, ameY);
-      doc.text(`Longueur : ${fmtLen(results.ame, formData.unit)} chacune`, mX, ameY+6.2);
-      doc.text(`Total âme : ${fmtLen(results.ame, formData.unit)}`, mX, ameY+12.4);
-      doc.setDrawColor(...C.border); doc.setLineWidth(0.45); doc.line(mX, ameY+20.5, pageW-mX, ameY+20.5);
-      doc.setFillColor(...C.beige); doc.setDrawColor(...C.orange); doc.setLineWidth(0.75);
-      doc.roundedRect(mX, ameY+27, cW, 22, 7, 7, "FD");
-      doc.setFillColor(...C.orange); doc.roundedRect(mX+3.8, ameY+30.2, 3, 15.5, 1.5, 1.5, "F");
-      doc.setTextColor(...C.ink); doc.setFont("helvetica","bold"); doc.setFontSize(11.5); doc.text("Vérification terminée", mX+10.5, ameY+38.8);
-      doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.setTextColor(...C.muted); doc.text('Consultez la section "Points de vigilance".', mX+10.5, ameY+45.8);
+      if (!hasNoAme) {
+        if (ameY = ameSY+15, ameY+56 > pageH-18) { doc.addPage(); bg(); header(); section(38,"Âme",C.green); ameY=53; }
+        else { section(ameSY,"Âme",C.green); }
+        doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(...C.ink);
+        doc.text("Âme(s) : x1", mX, ameY);
+        doc.text(`Longueur : ${fmtLen(results.ame, formData.unit)} chacune`, mX, ameY+6.2);
+        doc.text(`Total âme : ${fmtLen(results.ame, formData.unit)}`, mX, ameY+12.4);
+        doc.setDrawColor(...C.border); doc.setLineWidth(0.45); doc.line(mX, ameY+20.5, pageW-mX, ameY+20.5);
+        doc.setFillColor(...C.beige); doc.setDrawColor(...C.orange); doc.setLineWidth(0.75);
+        doc.roundedRect(mX, ameY+27, cW, 22, 7, 7, "FD");
+        doc.setFillColor(...C.orange); doc.roundedRect(mX+3.8, ameY+30.2, 3, 15.5, 1.5, 1.5, "F");
+        doc.setTextColor(...C.ink); doc.setFont("helvetica","bold"); doc.setFontSize(11.5); doc.text("Vérification terminée", mX+10.5, ameY+38.8);
+        doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.setTextColor(...C.muted); doc.text('Consultez la section "Points de vigilance".', mX+10.5, ameY+45.8);
+      }
       footer(doc.getNumberOfPages());
       doc.addPage(); bg(); header();
       section(38,"Résumé",C.green);
@@ -447,13 +508,13 @@ export default function NewCalc() {
       accentCard(mX, sumY, cW, sumH, C.green);
       const lX=mX+10; let sY=62;
       doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(...C.ink);
-      doc.text(`Produit : ${ACCESSORIES_CONFIG[formData.type].label}${formData.type === "HARNAIS" ? ` · Taille ${formData.harnessSize}` : ""}`, lX, sY);
+      doc.text(`Produit : ${ACCESSORIES_CONFIG[formData.type].label}${formData.type === "HARNAIS" ? ` · Taille ${formData.harnessSize} · ${formData.harnessCustomLength} cm` : ""}`, lX, sY);
       doc.text(`${formData.colorCount} couleurs`, mX+128, sY);
       doc.setFillColor(...C.green); doc.roundedRect(pageW-mX-28, 58.2, 22, 6.8, 2.4, 2.4, "F");
       doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(...C.white); doc.text("estimé", pageW-mX-17, 62.8, { align:"center" });
       sY+=9.5;
       doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(...C.ink);
-      doc.text(`Nœud : ${results.knotName} · ${formData.type === "HARNAIS" ? `Taille ${formData.harnessSize}` : `Longueur : ${formData.length} ${formData.unit}`} · Ø ${formData.ropeSize}`, lX, sY);
+      doc.text(`Nœud : ${results.knotName} · ${formData.type === "HARNAIS" ? `Tour poitrail : ${formData.harnessCustomLength} cm` : `Longueur : ${formData.length} ${formData.unit}`} · Ø ${formData.ropeSize}`, lX, sY);
       doc.text(`Arrondi : ${formData.roundingValue} ${formData.unit} · Unité : ${formData.unit}`, mX+128, sY);
       sY+=11;
       colorNames.forEach((n,i) => doc.text(n, lX, sY+i*6));
@@ -484,7 +545,7 @@ export default function NewCalc() {
       footer(2);
       doc.save(`cordeslab-${formData.name}.pdf`);
     } catch (e) { console.error("PDF error:", e); }
-  }, [formData, results, currentPalette, time, effectiveLength]);
+  }, [formData, results, currentPalette, time, effectiveLength, hasNoAme]);
 
   const KnotComponent = knot.component as any;
   const isHarness = formData.type === "HARNAIS";
@@ -558,18 +619,13 @@ export default function NewCalc() {
                 </div>
               )}
               {currentGuide && (
-                <a
-                  href={currentGuide.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: "flex", alignItems: "center", gap: "8px",
-                    background: "#FFF8F0", border: "1px solid #F0C080",
-                    borderRadius: "10px", padding: "8px 12px",
-                    marginBottom: "10px", textDecoration: "none",
-                    color: "#8B5A00", fontSize: "12px", fontWeight: 600,
-                  }}
-                >
+                <a href={currentGuide.url} target="_blank" rel="noopener noreferrer" style={{
+                  display: "flex", alignItems: "center", gap: "8px",
+                  background: "#FFF8F0", border: "1px solid #F0C080",
+                  borderRadius: "10px", padding: "8px 12px",
+                  marginBottom: "10px", textDecoration: "none",
+                  color: "#8B5A00", fontSize: "12px", fontWeight: 600,
+                }}>
                   <span style={{ fontSize: "16px" }}>📖</span>
                   <span>Guide disponible sur Etsy → {currentGuide.title}</span>
                 </a>
@@ -587,11 +643,11 @@ export default function NewCalc() {
                 <div>
                   <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>
                     Taille du chien
-                    <Tooltip text="Sélectionnez la taille correspondant au tour de poitrail de votre chien. Les longueurs sont estimées — calibration en cours." />
+                    <Tooltip text="Sélectionnez la taille pour pré-remplir le tour de poitrail, puis affinez la mesure exacte en cm si besoin." />
                   </label>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "8px", marginBottom: "10px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "8px", marginBottom: "12px" }}>
                     {HARNESS_SIZES.map((s) => (
-                      <div key={s.value} onClick={() => setFormData((p) => ({ ...p, harnessSize: s.value }))}
+                      <div key={s.value} onClick={() => handleHarnessSizeChange(s.value)}
                         style={{ padding: "10px 4px", borderRadius: "10px", textAlign: "center", cursor: "pointer", fontWeight: "bold", fontSize: "14px",
                           background: formData.harnessSize === s.value ? "#006D6F" : "#fff",
                           color: formData.harnessSize === s.value ? "#fff" : "#333",
@@ -600,8 +656,20 @@ export default function NewCalc() {
                       </div>
                     ))}
                   </div>
+                  <div style={{ marginBottom: "10px" }}>
+                    <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>
+                      Tour de poitrail exact (cm)
+                      <Tooltip text="Mesurez le tour de poitrail de votre chien avec un mètre ruban et saisissez la valeur exacte. Ajoutez 2-3 cm pour l'aisance." />
+                    </label>
+                    <input
+                      type="number" min={10} max={200} step={1}
+                      value={formData.harnessCustomLength}
+                      onChange={(e) => setFormData((p) => ({ ...p, harnessCustomLength: Math.max(1, Number(e.target.value)) }))}
+                      style={inputStyle}
+                    />
+                  </div>
                   <div style={{ fontSize: "12px", color: "#888", background: "#F9F9F9", borderRadius: "10px", padding: "8px 12px" }}>
-                    Tour de poitrail : <strong>{currentHarnessSize.poitrail}</strong>
+                    Référence taille <strong>{formData.harnessSize}</strong> : {currentHarnessSize.poitrail}
                   </div>
                 </div>
               ) : (
@@ -700,10 +768,12 @@ export default function NewCalc() {
                   <span style={{ fontWeight: "bold" }}>{fmtLen(results.perColor, formData.unit)}</span>
                 </div>
               ))}
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0" }}>
-                <span>Âme structurelle</span>
-                <span style={{ fontWeight: "bold" }}>{fmtLen(results.ame, formData.unit)}</span>
-              </div>
+              {!hasNoAme && (
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0" }}>
+                  <span>Âme structurelle</span>
+                  <span style={{ fontWeight: "bold" }}>{fmtLen(results.ame, formData.unit)}</span>
+                </div>
+              )}
             </div>
 
             <div className="params-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "30px" }}>
@@ -714,10 +784,8 @@ export default function NewCalc() {
               <div style={{ background: "#1A1A1A", color: "#fff", padding: "20px", borderRadius: "20px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
                   <span style={{ fontSize: "11px", opacity: 0.8 }}>CHRONO RÉEL</span>
-                  <span
-                    style={{ fontSize: "9px", background: "rgba(255,255,255,0.15)", color: "#bbb", padding: "2px 6px", borderRadius: "6px", cursor: "help" }}
-                    title="Chronométrez votre tressage pour connaître votre temps réel par projet. Indispensable pour fixer un prix de vente juste : temps × tarif horaire = coût de fabrication."
-                  >
+                  <span style={{ fontSize: "9px", background: "rgba(255,255,255,0.15)", color: "#bbb", padding: "2px 6px", borderRadius: "6px", cursor: "help" }}
+                    title="Chronométrez votre tressage pour connaître votre temps réel par projet. Indispensable pour fixer un prix de vente juste : temps × tarif horaire = coût de fabrication.">
                     ? À quoi ça sert
                   </span>
                 </div>
