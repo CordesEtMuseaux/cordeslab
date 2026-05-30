@@ -195,8 +195,8 @@ const safeWrite = (key: string, val: any) => {
 type FormData = {
   name: string; type: AccessoryKey; model: string; difficulty: string; nodeId: string;
   length: number; unit: LengthUnit; colorCount: number; roundingValue: number;
-  secureMode: boolean; colors: string[]; ropeSize: RopeSize; harnessSize: HarnessSize;
-  harnessCustomLength: number;
+  secureMode: boolean; colors: string[]; colorOrder: number[]; ropeSize: RopeSize;
+  harnessSize: HarnessSize; harnessCustomLength: number;
 };
 
 type StoredProject = {
@@ -264,12 +264,78 @@ const DifficultyButton = memo(({ label, selected, onClick }: { label: string; se
   </div>
 ));
 
-const ColorRow = memo(({ color, index, onChange }: { color: string; index: number; onChange: (i: number, v: string) => void }) => (
-  <div style={{ position: "relative" }}>
-    <div style={{ width: 10, height: 10, borderRadius: "50%", background: color, position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", border: "1px solid #ccc" }} />
-    <select value={color} onChange={(e) => onChange(index, e.target.value)} style={{ ...inputStyle, paddingLeft: "30px" }}>
-      {COLORS_DATABASE.map((db) => <option key={db.hex} value={db.hex}>{db.name}</option>)}
-    </select>
+// ─── ColorRow avec boutons d'ordre ▲▼ ────────────────────────────────────────
+const ColorRow = memo(({ color, index, isFirst, isLast, onChange, onMoveUp, onMoveDown }: {
+  color: string; index: number;
+  isFirst: boolean; isLast: boolean;
+  onChange: (i: number, v: string) => void;
+  onMoveUp: (i: number) => void;
+  onMoveDown: (i: number) => void;
+}) => (
+  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+    {/* Boutons ordre */}
+    <div style={{ display: "flex", flexDirection: "column", gap: "2px", flexShrink: 0 }}>
+      <button
+        onClick={() => onMoveUp(index)}
+        disabled={isFirst}
+        style={{
+          padding: "3px 6px", fontSize: "9px", lineHeight: 1,
+          borderRadius: "5px", border: "1px solid #E0E0E0",
+          background: isFirst ? "#F5F5F5" : "#fff",
+          cursor: isFirst ? "default" : "pointer",
+          opacity: isFirst ? 0.35 : 1,
+        }}
+        title="Monter"
+      >▲</button>
+      <button
+        onClick={() => onMoveDown(index)}
+        disabled={isLast}
+        style={{
+          padding: "3px 6px", fontSize: "9px", lineHeight: 1,
+          borderRadius: "5px", border: "1px solid #E0E0E0",
+          background: isLast ? "#F5F5F5" : "#fff",
+          cursor: isLast ? "default" : "pointer",
+          opacity: isLast ? 0.35 : 1,
+        }}
+        title="Descendre"
+      >▼</button>
+    </div>
+
+    {/* Badge numéro de position */}
+    <div style={{
+      width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+      background: index === 0 ? "#006D6F" : "#E8E4DC",
+      color: index === 0 ? "#fff" : "#888",
+      fontSize: "10px", fontWeight: 900,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      border: index === 0 ? "none" : "1px solid #D0CBC0",
+    }}>
+      {index + 1}
+    </div>
+
+    {/* Sélecteur couleur */}
+    <div style={{ position: "relative", flex: 1 }}>
+      <div style={{
+        width: 10, height: 10, borderRadius: "50%", background: color,
+        position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
+        border: "1px solid #ccc",
+      }} />
+      <select value={color} onChange={(e) => onChange(index, e.target.value)} style={{ ...inputStyle, paddingLeft: "30px" }}>
+        {COLORS_DATABASE.map((db) => <option key={db.hex} value={db.hex}>{db.name}</option>)}
+      </select>
+    </div>
+
+    {/* Badge "départ" sur la première corde */}
+    {index === 0 && (
+      <span style={{
+        fontSize: "9px", color: "#006D6F", fontWeight: 700,
+        whiteSpace: "nowrap", background: "#EDF8F5",
+        border: "1px solid #CDE9E1", borderRadius: "6px",
+        padding: "2px 6px", flexShrink: 0,
+      }}>
+        départ
+      </span>
+    )}
   </div>
 ));
 
@@ -278,6 +344,7 @@ const INITIAL_FORM: FormData = {
   difficulty: "Débutant", nodeId: "Cobra", length: 35, unit: "cm",
   colorCount: 2, roundingValue: 10, secureMode: true,
   colors: [COLORS_DATABASE[6].hex, COLORS_DATABASE[0].hex, COLORS_DATABASE[2].hex, COLORS_DATABASE[1].hex],
+  colorOrder: [0, 1, 2, 3],
   ropeSize: "4mm", harnessSize: "M", harnessCustomLength: 58,
 };
 
@@ -352,17 +419,45 @@ export default function NewCalc() {
   }, [formData.nodeId, formData.type]);
 
   const handleReset = useCallback(() => { setFormData(INITIAL_FORM); setTime(0); setIsPaused(true); setSaveMessage(""); }, []);
+
   const handleColorChange = useCallback((i: number, value: string) => {
     setFormData((prev) => { const colors = [...prev.colors]; colors[i] = value; return { ...prev, colors }; });
   }, []);
+
+  // ─── Déplacer une couleur vers le haut (swap avec i-1) ────────────────────
+  const handleColorMoveUp = useCallback((i: number) => {
+    if (i === 0) return;
+    setFormData((prev) => {
+      const colors = [...prev.colors];
+      const colorOrder = [...prev.colorOrder];
+      [colors[i - 1], colors[i]] = [colors[i], colors[i - 1]];
+      [colorOrder[i - 1], colorOrder[i]] = [colorOrder[i], colorOrder[i - 1]];
+      return { ...prev, colors, colorOrder };
+    });
+  }, []);
+
+  // ─── Déplacer une couleur vers le bas (swap avec i+1) ────────────────────
+  const handleColorMoveDown = useCallback((i: number) => {
+    setFormData((prev) => {
+      if (i >= prev.colorCount - 1) return prev;
+      const colors = [...prev.colors];
+      const colorOrder = [...prev.colorOrder];
+      [colors[i], colors[i + 1]] = [colors[i + 1], colors[i]];
+      [colorOrder[i], colorOrder[i + 1]] = [colorOrder[i + 1], colorOrder[i]];
+      return { ...prev, colors, colorOrder };
+    });
+  }, []);
+
   const handleDifficultyChange = useCallback((diff: string) => {
     const first = KNOTS_REGISTRY.find((k) => k.difficulty === diff);
     setFormData((prev) => ({ ...prev, difficulty: diff, nodeId: first ? first.id : prev.nodeId }));
   }, []);
+
   const handleTypeChange = useCallback((key: AccessoryKey) => {
     if (isAccLocked(ACCESSORIES_CONFIG[key].lock)) return;
     setFormData((prev) => ({ ...prev, type: key, model: ACCESSORIES_CONFIG[key].models[0] }));
   }, []);
+
   const handleUnitChange = useCallback((nextUnit: LengthUnit) => {
     setFormData((prev) => {
       const lCm = toCm(prev.length, prev.unit);
@@ -472,18 +567,26 @@ export default function NewCalc() {
       doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...C.muted);
       doc.text(`Durée de fabrication : ${fmtTime(time)}`, pageW-mX, 89, { align: "right" });
       section(98, "Longueurs à couper", C.green);
+
+      // ─── Tableau avec l'ordre des couleurs ───────────────────────────────
       autoTable(doc, {
         startY: 111, margin: { left: mX, right: mX }, tableWidth: cW,
-        head: [["Rep.", `Longueur (${formData.unit})`, `Équiv. (${equivUnit(formData.unit)})`, "Note"]],
-        body: Array.from({ length: formData.colorCount }, (_,i) => [`Corde ${i+1}`, fmtLen(results.perColor, formData.unit), fmtLen(results.perColor, equivUnit(formData.unit)), ""]),
+        head: [["Ordre", "Couleur", `Longueur (${formData.unit})`, `Équiv. (${equivUnit(formData.unit)})`]],
+        body: currentPalette.map((hex, i) => [
+          i === 0 ? `${i + 1} — départ` : `${i + 1}`,
+          colorNames[i],
+          fmtLen(results.perColor, formData.unit),
+          fmtLen(results.perColor, equivUnit(formData.unit)),
+        ]),
         theme: "plain",
         styles: { font:"helvetica", fontSize:10, textColor:C.ink, lineColor:[80,80,80], lineWidth:0.25, cellPadding:{top:6,right:4,bottom:6,left:4}, valign:"middle", halign:"center" },
         headStyles: { fillColor:C.green, textColor:C.ink, fontStyle:"bold", minCellHeight:12 },
         bodyStyles: { fillColor:C.beige, minCellHeight:12 },
-        columnStyles: { 0:{cellWidth:36,fontStyle:"bold"}, 1:{cellWidth:45}, 2:{cellWidth:39}, 3:{cellWidth:62} },
+        columnStyles: { 0:{cellWidth:36,fontStyle:"bold"}, 1:{cellWidth:48}, 2:{cellWidth:40}, 3:{cellWidth:58} },
         didParseCell: (d) => { d.cell.styles.lineWidth=0.25; d.cell.styles.lineColor=[80,80,80]; },
         didDrawCell:  (d) => { doc.setDrawColor(80,80,80); doc.setLineWidth(0.25); doc.rect(d.cell.x, d.cell.y, d.cell.width, d.cell.height); },
       });
+
       const tableEndY = (doc as any).lastAutoTable.finalY ?? 150;
       const ameSY = tableEndY + 14;
       let ameY: number;
@@ -517,7 +620,7 @@ export default function NewCalc() {
       doc.text(`Nœud : ${results.knotName} · ${formData.type === "HARNAIS" ? `Tour poitrail : ${formData.harnessCustomLength} cm` : `Longueur : ${formData.length} ${formData.unit}`} · Ø ${formData.ropeSize}`, lX, sY);
       doc.text(`Arrondi : ${formData.roundingValue} ${formData.unit} · Unité : ${formData.unit}`, mX+128, sY);
       sY+=11;
-      colorNames.forEach((n,i) => doc.text(n, lX, sY+i*6));
+      colorNames.forEach((n,i) => doc.text(`${i+1}. ${n}${i === 0 ? " (départ)" : ""}`, lX, sY+i*6));
       const pl=getPaletteLayout(formData.colorCount);
       const ptw=currentPalette.length*pl.swatchSize+(currentPalette.length-1)*pl.gap;
       const ctrX=mX+cW/2, pLY=sumY+sumH-18;
@@ -593,18 +696,42 @@ export default function NewCalc() {
             </div>
 
             <div style={cardStyle}>
-              <h3 style={h3Style}>PALETTE</h3>
+              <h3 style={{ ...h3Style, display: "flex", alignItems: "center" }}>
+                PALETTE
+                <Tooltip text="Définissez l'ordre des couleurs : la corde 1 (départ) est celle que vous montez en premier sur la boucle. Pour le Cobra, elle sera la couleur centrale." />
+              </h3>
               <select style={inputStyle} value={formData.colorCount} onChange={(e) => setFormData((p) => ({ ...p, colorCount: Number(e.target.value) }))}>
                 {[1,2,3,4].map((n) => <option key={n} value={n}>{n} couleur(s)</option>)}
               </select>
+
               {formData.colorCount > 2 && (
                 <div style={{ fontSize: "11px", color: "#006D6F", background: "#EDF8F5", border: "1px solid #CDE9E1", borderRadius: "8px", padding: "6px 10px", marginTop: "8px" }}>
                   ℹ️ L'aperçu 3D affiche uniquement les 2 premières couleurs. Les couleurs supplémentaires seront bien utilisées dans votre tressage.
                 </div>
               )}
-              <div className="params-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px", marginTop: "15px" }}>
-                {currentPalette.map((c, i) => <ColorRow key={i} color={c} index={i} onChange={handleColorChange} />)}
+
+              {/* ─── Liste des couleurs avec ordre ▲▼ ─────────────────────── */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "15px" }}>
+                {currentPalette.map((c, i) => (
+                  <ColorRow
+                    key={i}
+                    color={c}
+                    index={i}
+                    isFirst={i === 0}
+                    isLast={i === formData.colorCount - 1}
+                    onChange={handleColorChange}
+                    onMoveUp={handleColorMoveUp}
+                    onMoveDown={handleColorMoveDown}
+                  />
+                ))}
               </div>
+
+              {/* ─── Info ordre départ ─────────────────────────────────────── */}
+              {formData.colorCount > 1 && (
+                <div style={{ fontSize: "11px", color: "#5A5A5A", background: "#F5F3EE", border: "1px solid #E0DAD0", borderRadius: "8px", padding: "6px 10px", marginTop: "10px" }}>
+                  💡 La corde <strong style={{ color: "#006D6F" }}>1 — départ</strong> est celle que vous montez en premier sur votre boucle ou clip. Pour un Cobra, elle détermine la couleur centrale du nœud.
+                </div>
+              )}
             </div>
           </div>
 
@@ -762,12 +889,26 @@ export default function NewCalc() {
             </div>
 
             <div style={{ padding: "0 20px", marginBottom: "30px" }}>
-              {currentPalette.map((_, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid #F0F0F0" }}>
-                  <span>Corde {i+1}</span>
-                  <span style={{ fontWeight: "bold" }}>{fmtLen(results.perColor, formData.unit)}</span>
-                </div>
-              ))}
+              {currentPalette.map((hex, i) => {
+                const colorName = COLORS_DATABASE.find((c) => c.hex.toLowerCase() === hex.toLowerCase())?.name ?? hex;
+                return (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #F0F0F0" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <div style={{ width: 12, height: 12, borderRadius: "50%", background: hex, border: "1px solid #ddd", flexShrink: 0 }} />
+                      <span>
+                        Corde {i + 1}
+                        {i === 0 && (
+                          <span style={{ marginLeft: "8px", fontSize: "10px", color: "#006D6F", fontWeight: 700, background: "#EDF8F5", border: "1px solid #CDE9E1", borderRadius: "5px", padding: "1px 5px" }}>
+                            départ
+                          </span>
+                        )}
+                        <span style={{ marginLeft: "6px", fontSize: "11px", color: "#999" }}>{colorName}</span>
+                      </span>
+                    </div>
+                    <span style={{ fontWeight: "bold" }}>{fmtLen(results.perColor, formData.unit)}</span>
+                  </div>
+                );
+              })}
               {!hasNoAme && (
                 <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0" }}>
                   <span>Âme structurelle</span>
