@@ -26,10 +26,6 @@ import { GUIDES_ETSY } from "../data/etsyGuides";
 // Nœuds sans âme structurelle
 const KNOTS_WITHOUT_AME = ["TressageRond"];
 
-// ─── Facteur dynamique Tressage Rond selon nombre de couleurs ─────────────────
-// 2 couleurs = 4 brins → facteur 10 (calibré jouet balle 40cm)
-// 3 couleurs = 6 brins → facteur 14 (calibré laisse 230cm)
-// 4 couleurs = 8 brins → facteur 18 (estimé)
 const getTressageRondFactor = (colorCount: number): number => {
   if (colorCount <= 2) return 10;
   if (colorCount === 3) return 14;
@@ -37,13 +33,11 @@ const getTressageRondFactor = (colorCount: number): number => {
 };
 
 const COLORS_DATABASE = [
-  // Neutres
   { name: "Noir",              hex: "#1A1A1A" },
   { name: "Blanc",             hex: "#FFFFFF" },
   { name: "Gris Acier",        hex: "#71797E" },
   { name: "Gris Clair",        hex: "#C0C0C0" },
   { name: "Beige",             hex: "#D4B896" },
-  // Chauds
   { name: "Rouge Impérial",    hex: "#ED2939" },
   { name: "Rouge Corail",      hex: "#FF6B6B" },
   { name: "Orange Vif",        hex: "#FF8C00" },
@@ -51,7 +45,6 @@ const COLORS_DATABASE = [
   { name: "Or",                hex: "#CFB53B" },
   { name: "Caramel",           hex: "#C68E17" },
   { name: "Marron Chocolat",   hex: "#7B3F00" },
-  // Froids
   { name: "Bleu Royal",        hex: "#002366" },
   { name: "Bleu Ciel",         hex: "#87CEEB" },
   { name: "Bleu Marine",       hex: "#001F5B" },
@@ -59,7 +52,6 @@ const COLORS_DATABASE = [
   { name: "Vert Forêt",        hex: "#013220" },
   { name: "Vert Menthe",       hex: "#3EB489" },
   { name: "Vert Olive",        hex: "#808000" },
-  // Roses / Violets
   { name: "Rose Fuchsia",      hex: "#FF007F" },
   { name: "Rose Poudré",       hex: "#FFB6C1" },
   { name: "Violet",            hex: "#8B00FF" },
@@ -72,8 +64,24 @@ const ACCESSORIES_CONFIG = {
   POIGNEE: { label: "Poignée", icon: "✋", lock: "Creator", models: ["Simple", "Confort"] },
   LAISSE:  { label: "Laisse",  icon: "🦮", lock: "Pro",     models: ["1m20", "Multiposition sans poignée", "Multiposition avec poignée"] },
   HARNAIS: { label: "Harnais", icon: "🎗️", lock: "Pro",    models: ["En Y", "En H"] },
-  JOUETS: { label: "Jouets", icon: "🎾", lock: "Pro", models: ["Balle avec corde", "Tug simple", "Tug double poignée"] },
+  JOUETS:  { label: "Jouets",  icon: "🎾", lock: "Pro",     models: ["Balle avec corde", "Tug simple", "Tug double poignée"] },
 } as const;
+
+// ─── Textes de la popup selon le plan requis ──────────────────────────────────
+const UPSELL_CONTENT: Record<string, { plan: string; title: string; body: string; cta: string }> = {
+  Creator: {
+    plan: "Creator",
+    title: "Cette fonctionnalité est réservée au plan Creator",
+    body: "Débloquez les calculs Poignées, l'Export PDF et 12 nœuds sélectionnés pour 9€/mois.",
+    cta: "Passer à Creator →",
+  },
+  Pro: {
+    plan: "Pro",
+    title: "Cette fonctionnalité est réservée au plan Pro",
+    body: "Débloquez les calculs Laisses, Harnais, Jouets et tous les nœuds pour 19€/mois.",
+    cta: "Passer à Pro →",
+  },
+};
 
 type AccessoryKey = keyof typeof ACCESSORIES_CONFIG;
 type LengthUnit = "cm" | "m" | "in";
@@ -131,16 +139,15 @@ const DIFFICULTY_TOOLTIPS: Record<string, string> = {
   "Expert":        "Nœuds très techniques, longs à réaliser. Réservés aux tresseurs confirmés.",
 };
 
-const toCm       = (v: number, u: LengthUnit) => u === "m" ? v * 100 : u === "in" ? v * 2.54 : v;
-const fromCm     = (v: number, u: LengthUnit) => u === "m" ? v / 100 : u === "in" ? v / 2.54 : v;
-const roundDisp  = (v: number, u: LengthUnit) => u === "m" ? +v.toFixed(2) : u === "in" ? +v.toFixed(1) : Math.round(v);
-const fmtLen     = (cm: number, u: LengthUnit) => `${roundDisp(fromCm(cm, u), u)} ${u}`;
-const equivUnit  = (u: LengthUnit): LengthUnit => u === "cm" ? "in" : "cm";
-const fmtDur     = (min: number) => `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, "0")}`;
-const fmtTime    = (s: number) => `${Math.floor(s / 3600)}h ${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}m ${String(s % 60).padStart(2, "0")}s`;
+const toCm      = (v: number, u: LengthUnit) => u === "m" ? v * 100 : u === "in" ? v * 2.54 : v;
+const fromCm    = (v: number, u: LengthUnit) => u === "m" ? v / 100 : u === "in" ? v / 2.54 : v;
+const roundDisp = (v: number, u: LengthUnit) => u === "m" ? +v.toFixed(2) : u === "in" ? +v.toFixed(1) : Math.round(v);
+const fmtLen    = (cm: number, u: LengthUnit) => `${roundDisp(fromCm(cm, u), u)} ${u}`;
+const equivUnit = (u: LengthUnit): LengthUnit => u === "cm" ? "in" : "cm";
+const fmtDur    = (min: number) => `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, "0")}`;
+const fmtTime   = (s: number) => `${Math.floor(s / 3600)}h ${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}m ${String(s % 60).padStart(2, "0")}s`;
 
-// ─── Fonctions dynamiques — lisent getUserPlan() à chaque appel ───────────────
-const isAccLocked  = (lock: string | null) => {
+const isAccLocked = (lock: string | null) => {
   const plan = getUserPlan();
   if (!lock || plan === "Pro") return false;
   if (plan === "Creator") return lock === "Pro";
@@ -208,6 +215,100 @@ type StoredProject = {
   timeSpent: number; createdAt: string; updatedAt: string;
 };
 
+// ─── Popup de conversion ──────────────────────────────────────────────────────
+function UpsellModal({ planRequired, onClose }: { planRequired: "Creator" | "Pro"; onClose: () => void }) {
+  const content = UPSELL_CONTENT[planRequired];
+
+  // Fermer sur clic overlay
+  const handleOverlayClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) onClose();
+  }, [onClose]);
+
+  // Fermer sur Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <div
+      onClick={handleOverlayClick}
+      style={{
+        position: "fixed", inset: 0, zIndex: 1000,
+        background: "rgba(0,0,0,0.45)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "20px",
+        backdropFilter: "blur(2px)",
+      }}
+    >
+      <div style={{
+        background: "#fff", borderRadius: "24px",
+        padding: "32px 28px", maxWidth: "400px", width: "100%",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
+        display: "flex", flexDirection: "column", gap: "16px",
+        position: "relative",
+      }}>
+        {/* Icône */}
+        <div style={{
+          width: 52, height: 52, borderRadius: "16px",
+          background: "#EDF8F5", border: "2px solid #CDE9E1",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "24px", margin: "0 auto",
+        }}>
+          🔒
+        </div>
+
+        {/* Titre */}
+        <h2 style={{
+          fontSize: "17px", fontWeight: 900, color: "#1A1A1A",
+          textAlign: "center", margin: 0, lineHeight: 1.3,
+        }}>
+          {content.title}
+        </h2>
+
+        {/* Corps */}
+        <p style={{
+          fontSize: "13px", color: "#666", textAlign: "center",
+          margin: 0, lineHeight: 1.6,
+        }}>
+          {content.body}
+        </p>
+
+        {/* Bouton principal */}
+        <a
+          href="/offers"
+          style={{
+            display: "block", textAlign: "center",
+            padding: "14px 20px", borderRadius: "14px",
+            background: "#006D6F", color: "#fff",
+            fontWeight: 800, fontSize: "14px",
+            textDecoration: "none",
+            boxShadow: "0 4px 14px rgba(0,109,111,0.35)",
+            transition: "opacity 0.15s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+        >
+          {content.cta}
+        </a>
+
+        {/* Lien secondaire */}
+        <button
+          onClick={onClose}
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            color: "#999", fontSize: "12px", textAlign: "center",
+            padding: "4px", textDecoration: "underline",
+          }}
+        >
+          Non merci
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Tooltip({ text }: { text: string }) {
   const [visible, setVisible] = useState(false);
   return (
@@ -273,7 +374,6 @@ const ColorRow = memo(({ color, index, isFirst, isLast, onChange, onMoveUp, onMo
   onMoveDown: (i: number) => void;
 }) => (
   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-    {/* Boutons ordre */}
     <div style={{ display: "flex", flexDirection: "column", gap: "2px", flexShrink: 0 }}>
       <button
         onClick={() => onMoveUp(index)}
@@ -300,8 +400,6 @@ const ColorRow = memo(({ color, index, isFirst, isLast, onChange, onMoveUp, onMo
         title="Descendre"
       >▼</button>
     </div>
-
-    {/* Badge numéro de position */}
     <div style={{
       width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
       background: index === 0 ? "#006D6F" : "#E8E4DC",
@@ -312,8 +410,6 @@ const ColorRow = memo(({ color, index, isFirst, isLast, onChange, onMoveUp, onMo
     }}>
       {index + 1}
     </div>
-
-    {/* Sélecteur couleur */}
     <div style={{ position: "relative", flex: 1 }}>
       <div style={{
         width: 10, height: 10, borderRadius: "50%", background: color,
@@ -324,8 +420,6 @@ const ColorRow = memo(({ color, index, isFirst, isLast, onChange, onMoveUp, onMo
         {COLORS_DATABASE.map((db) => <option key={db.hex} value={db.hex}>{db.name}</option>)}
       </select>
     </div>
-
-    {/* Badge "départ" sur la première corde */}
     {index === 0 && (
       <span style={{
         fontSize: "9px", color: "#006D6F", fontWeight: 700,
@@ -343,7 +437,7 @@ const INITIAL_FORM: FormData = {
   name: "Nouveau Projet", type: "COLLIER", model: "Boucle plastique",
   difficulty: "Débutant", nodeId: "Cobra", length: 35, unit: "cm",
   colorCount: 2, roundingValue: 10, secureMode: true,
-  colors: [COLORS_DATABASE[6].hex, COLORS_DATABASE[0].hex, COLORS_DATABASE[2].hex, COLORS_DATABASE[1].hex],
+  colors: [COLORS_DATABASE[5].hex, COLORS_DATABASE[0].hex, COLORS_DATABASE[2].hex, COLORS_DATABASE[1].hex],
   colorOrder: [0, 1, 2, 3],
   ropeSize: "4mm", harnessSize: "M", harnessCustomLength: 58,
 };
@@ -354,6 +448,8 @@ export default function NewCalc() {
   const [isPaused, setIsPaused]       = useState(true);
   const [saveMessage, setSaveMessage] = useState("");
   const [formData, setFormData]       = useState<FormData>(INITIAL_FORM);
+  // ─── État popup upsell ────────────────────────────────────────────────────
+  const [upsellPlan, setUpsellPlan]   = useState<"Creator" | "Pro" | null>(null);
 
   const userPlan = getUserPlan();
 
@@ -378,7 +474,6 @@ export default function NewCalc() {
   }, [formData.type, formData.harnessCustomLength, formData.length, formData.unit]);
 
   const knot = useMemo(() => KNOTS_REGISTRY.find((k) => k.id === formData.nodeId) ?? KNOTS_REGISTRY[0], [formData.nodeId]);
-
   const hasNoAme = KNOTS_WITHOUT_AME.includes(formData.nodeId);
 
   const results = useMemo(() => {
@@ -386,25 +481,18 @@ export default function NewCalc() {
     const ropeFactor = formData.ropeSize === "3mm" ? 0.85 : 1.0;
     const lengthCm   = effectiveLength;
     const roundingCm = Math.max(1, toCm(formData.roundingValue, formData.unit));
-
-    // Facteur dynamique pour TressageRond selon colorCount, fixe pour les autres
     const effectiveFactor = formData.nodeId === "TressageRond"
       ? getTressageRondFactor(formData.colorCount)
       : knot.factor;
-
     const perColor   = Math.ceil((lengthCm * effectiveFactor * ropeFactor * margin) / formData.colorCount / roundingCm) * roundingCm;
     const estMin     = getEstMin(knot.baseMinutes, lengthCm, formData.type, formData.model);
     const isHarnessEstimated = formData.type === "HARNAIS" || formData.type === "JOUETS";
     const totalBrins = perColor * formData.colorCount;
     const ame = hasNoAme ? 0 : lengthCm;
-
-    // TressageRond calibré pour 2 et 3 couleurs, estimé pour 4
     const isTressageRondCalibrated = formData.nodeId === "TressageRond" && formData.colorCount <= 3;
-
     return {
       perColor, ame, estimatedMinutes: estMin, estimatedTime: fmtDur(estMin),
-      totalBrins,
-      totalGeneral: totalBrins + ame,
+      totalBrins, totalGeneral: totalBrins + ame,
       knotName: knot.name, factor: effectiveFactor, is3D: knot.is3D,
       calibrated: (knot.calibrated || isTressageRondCalibrated) && !isHarnessEstimated,
       isHarnessEstimated,
@@ -412,8 +500,7 @@ export default function NewCalc() {
   }, [formData, knot, effectiveLength, hasNoAme]);
 
   const currentPalette = useMemo(() => formData.colors.slice(0, formData.colorCount), [formData.colors, formData.colorCount]);
-
-  const currentGuide = useMemo(() => {
+  const currentGuide   = useMemo(() => {
     const key = `${formData.nodeId}|${formData.type}`;
     return GUIDES_ETSY[key] ?? null;
   }, [formData.nodeId, formData.type]);
@@ -424,7 +511,6 @@ export default function NewCalc() {
     setFormData((prev) => { const colors = [...prev.colors]; colors[i] = value; return { ...prev, colors }; });
   }, []);
 
-  // ─── Déplacer une couleur vers le haut (swap avec i-1) ────────────────────
   const handleColorMoveUp = useCallback((i: number) => {
     if (i === 0) return;
     setFormData((prev) => {
@@ -436,7 +522,6 @@ export default function NewCalc() {
     });
   }, []);
 
-  // ─── Déplacer une couleur vers le bas (swap avec i+1) ────────────────────
   const handleColorMoveDown = useCallback((i: number) => {
     setFormData((prev) => {
       if (i >= prev.colorCount - 1) return prev;
@@ -453,9 +538,20 @@ export default function NewCalc() {
     setFormData((prev) => ({ ...prev, difficulty: diff, nodeId: first ? first.id : prev.nodeId }));
   }, []);
 
+  // ─── Clic sur un accessoire : ouvre la popup si verrouillé ───────────────
   const handleTypeChange = useCallback((key: AccessoryKey) => {
-    if (isAccLocked(ACCESSORIES_CONFIG[key].lock)) return;
-    setFormData((prev) => ({ ...prev, type: key, model: ACCESSORIES_CONFIG[key].models[0] }));
+    const lock = ACCESSORIES_CONFIG[key].lock;
+    if (!isAccLocked(lock)) {
+      setFormData((prev) => ({ ...prev, type: key, model: ACCESSORIES_CONFIG[key].models[0] }));
+      return;
+    }
+    // Détermine quel plan est requis pour afficher le bon message
+    const plan = getUserPlan();
+    if (plan === "Creator" && lock === "Pro") {
+      setUpsellPlan("Pro");
+    } else {
+      setUpsellPlan(lock === "Pro" ? "Pro" : "Creator");
+    }
   }, []);
 
   const handleUnitChange = useCallback((nextUnit: LengthUnit) => {
@@ -567,8 +663,6 @@ export default function NewCalc() {
       doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...C.muted);
       doc.text(`Durée de fabrication : ${fmtTime(time)}`, pageW-mX, 89, { align: "right" });
       section(98, "Longueurs à couper", C.green);
-
-      // ─── Tableau avec l'ordre des couleurs ───────────────────────────────
       autoTable(doc, {
         startY: 111, margin: { left: mX, right: mX }, tableWidth: cW,
         head: [["Ordre", "Couleur", `Longueur (${formData.unit})`, `Équiv. (${equivUnit(formData.unit)})`]],
@@ -586,7 +680,6 @@ export default function NewCalc() {
         didParseCell: (d) => { d.cell.styles.lineWidth=0.25; d.cell.styles.lineColor=[80,80,80]; },
         didDrawCell:  (d) => { doc.setDrawColor(80,80,80); doc.setLineWidth(0.25); doc.rect(d.cell.x, d.cell.y, d.cell.width, d.cell.height); },
       });
-
       const tableEndY = (doc as any).lastAutoTable.finalY ?? 150;
       const ameSY = tableEndY + 14;
       let ameY: number;
@@ -656,6 +749,15 @@ export default function NewCalc() {
 
   return (
     <div style={{ background: "#EAE3D2", minHeight: "100vh" }} className="newcalc-padding">
+
+      {/* ─── Popup upsell ──────────────────────────────────────────────────── */}
+      {upsellPlan && (
+        <UpsellModal
+          planRequired={upsellPlan}
+          onClose={() => setUpsellPlan(null)}
+        />
+      )}
+
       {step === 1 && (
         <div className="newcalc-grid">
 
@@ -703,30 +805,22 @@ export default function NewCalc() {
               <select style={inputStyle} value={formData.colorCount} onChange={(e) => setFormData((p) => ({ ...p, colorCount: Number(e.target.value) }))}>
                 {[1,2,3,4].map((n) => <option key={n} value={n}>{n} couleur(s)</option>)}
               </select>
-
               {formData.colorCount > 2 && (
                 <div style={{ fontSize: "11px", color: "#006D6F", background: "#EDF8F5", border: "1px solid #CDE9E1", borderRadius: "8px", padding: "6px 10px", marginTop: "8px" }}>
                   ℹ️ L'aperçu 3D affiche uniquement les 2 premières couleurs. Les couleurs supplémentaires seront bien utilisées dans votre tressage.
                 </div>
               )}
-
-              {/* ─── Liste des couleurs avec ordre ▲▼ ─────────────────────── */}
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "15px" }}>
                 {currentPalette.map((c, i) => (
                   <ColorRow
-                    key={i}
-                    color={c}
-                    index={i}
-                    isFirst={i === 0}
-                    isLast={i === formData.colorCount - 1}
+                    key={i} color={c} index={i}
+                    isFirst={i === 0} isLast={i === formData.colorCount - 1}
                     onChange={handleColorChange}
                     onMoveUp={handleColorMoveUp}
                     onMoveDown={handleColorMoveDown}
                   />
                 ))}
               </div>
-
-              {/* ─── Info ordre départ ─────────────────────────────────────── */}
               {formData.colorCount > 1 && (
                 <div style={{ fontSize: "11px", color: "#5A5A5A", background: "#F5F3EE", border: "1px solid #E0DAD0", borderRadius: "8px", padding: "6px 10px", marginTop: "10px" }}>
                   💡 La corde <strong style={{ color: "#006D6F" }}>1 — départ</strong> est celle que vous montez en premier sur votre boucle ou clip. Pour un Cobra, elle détermine la couleur centrale du nœud.
@@ -765,7 +859,6 @@ export default function NewCalc() {
             <div style={cardStyle}>
               <div style={{ fontSize: "10px", fontWeight: "900", color: "#006D6F", marginBottom: "5px" }}>PARAMÈTRES</div>
               <h2 style={{ fontSize: "24px", fontWeight: "900", marginBottom: "20px" }}>Réglages finaux</h2>
-
               {isHarness ? (
                 <div>
                   <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>
@@ -816,7 +909,6 @@ export default function NewCalc() {
                   </div>
                 </div>
               )}
-
               {!isHarness && (
                 <div style={{ marginTop: "15px" }}>
                   <label style={labelStyle}>Unité</label>
@@ -825,7 +917,6 @@ export default function NewCalc() {
                   </select>
                 </div>
               )}
-
               <div style={{ marginTop: "15px" }}>
                 <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>
                   Épaisseur corde
@@ -881,13 +972,11 @@ export default function NewCalc() {
                 </div>
               </div>
             </div>
-
             <div id="pdf-knot-preview" style={{ background: "#F9F9F9", borderRadius: "24px", overflow: "hidden", height: "160px", margin: "20px 0", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <div style={{ transform: "scale(0.85)", transformOrigin: "center center", flexShrink: 0 }}>
                 <KnotComponent ref={knotRef} color1={formData.colors[0]} color2={formData.colors[1]} accessoryType={formData.type} orientation="horizontal" />
               </div>
             </div>
-
             <div style={{ padding: "0 20px", marginBottom: "30px" }}>
               {currentPalette.map((hex, i) => {
                 const colorName = COLORS_DATABASE.find((c) => c.hex.toLowerCase() === hex.toLowerCase())?.name ?? hex;
@@ -916,7 +1005,6 @@ export default function NewCalc() {
                 </div>
               )}
             </div>
-
             <div className="params-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "30px" }}>
               <div style={{ background: "#006D6F", color: "#fff", padding: "20px", borderRadius: "20px" }}>
                 <div style={{ fontSize: "11px", opacity: 0.8 }}>TOTAL GÉNÉRAL</div>
@@ -933,7 +1021,6 @@ export default function NewCalc() {
                 <div style={{ fontSize: "28px", fontWeight: "900" }}>{fmtTime(time)}</div>
               </div>
             </div>
-
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "10px" }}>
               <button onClick={() => setIsPaused((p) => !p)} style={{ ...mainBtn, width: "100%", padding: "15px" }}>
                 {isPaused ? "▶ Démarrer le chrono" : "⏸ Pause"}
