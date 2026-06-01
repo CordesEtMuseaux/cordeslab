@@ -23,7 +23,6 @@ import MadMaxPreview from "../components/Expert/MadMaxPreview";
 import { getUserPlan } from "../App";
 import { GUIDES_ETSY } from "../data/etsyGuides";
 
-// Nœuds sans âme structurelle
 const KNOTS_WITHOUT_AME = ["TressageRond"];
 
 const getTressageRondFactor = (colorCount: number): number => {
@@ -67,21 +66,23 @@ const ACCESSORIES_CONFIG = {
   JOUETS:  { label: "Jouets",  icon: "🎾", lock: "Pro",     models: ["Balle avec corde", "Tug simple", "Tug double poignée"] },
 } as const;
 
-// ─── Textes de la popup selon le plan requis ──────────────────────────────────
-const UPSELL_CONTENT: Record<string, { plan: string; title: string; body: string; cta: string }> = {
+const UPSELL_CONTENT: Record<string, { title: string; body: string; cta: string }> = {
   Creator: {
-    plan: "Creator",
     title: "Cette fonctionnalité est réservée au plan Creator",
     body: "Débloquez les calculs Poignées, l'Export PDF et 12 nœuds sélectionnés pour 9€/mois.",
     cta: "Passer à Creator →",
   },
   Pro: {
-    plan: "Pro",
     title: "Cette fonctionnalité est réservée au plan Pro",
     body: "Débloquez les calculs Laisses, Harnais, Jouets et tous les nœuds pour 19€/mois.",
     cta: "Passer à Pro →",
   },
 };
+
+// ─── Clé localStorage pour la popup email ────────────────────────────────────
+const EMAIL_POPUP_KEY = "cordeslab_email_popup_shown";
+// ─── URL Google Apps Script ───────────────────────────────────────────────────
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwB13N-t_tggjVKIk54DBhpKnQjK2EZfblejGDG_8YRvvZU9iAzRISY23jKkFCIdxx4/exec";
 
 type AccessoryKey = keyof typeof ACCESSORIES_CONFIG;
 type LengthUnit = "cm" | "m" | "in";
@@ -215,95 +216,121 @@ type StoredProject = {
   timeSpent: number; createdAt: string; updatedAt: string;
 };
 
-// ─── Popup de conversion ──────────────────────────────────────────────────────
+// ─── Popup upsell ─────────────────────────────────────────────────────────────
 function UpsellModal({ planRequired, onClose }: { planRequired: "Creator" | "Pro"; onClose: () => void }) {
   const content = UPSELL_CONTENT[planRequired];
+  const handleOverlay = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) onClose();
+  }, [onClose]);
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
+  return (
+    <div onClick={handleOverlay} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", backdropFilter: "blur(2px)" }}>
+      <div style={{ background: "#fff", borderRadius: "24px", padding: "32px 28px", maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.18)", display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div style={{ width: 52, height: 52, borderRadius: "16px", background: "#EDF8F5", border: "2px solid #CDE9E1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px", margin: "0 auto" }}>🔒</div>
+        <h2 style={{ fontSize: "17px", fontWeight: 900, color: "#1A1A1A", textAlign: "center", margin: 0, lineHeight: 1.3 }}>{content.title}</h2>
+        <p style={{ fontSize: "13px", color: "#666", textAlign: "center", margin: 0, lineHeight: 1.6 }}>{content.body}</p>
+        <a href="/offers" style={{ display: "block", textAlign: "center", padding: "14px 20px", borderRadius: "14px", background: "#006D6F", color: "#fff", fontWeight: 800, fontSize: "14px", textDecoration: "none", boxShadow: "0 4px 14px rgba(0,109,111,0.35)" }}>{content.cta}</a>
+        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#999", fontSize: "12px", textAlign: "center", padding: "4px", textDecoration: "underline" }}>Non merci</button>
+      </div>
+    </div>
+  );
+}
 
-  // Fermer sur clic overlay
-  const handleOverlayClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+// ─── Popup capture email ──────────────────────────────────────────────────────
+function EmailCaptureModal({ onClose }: { onClose: () => void }) {
+  const [prenom, setPrenom]   = useState("");
+  const [email, setEmail]     = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent]       = useState(false);
+  const [error, setError]     = useState("");
+
+  const handleOverlay = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) onClose();
   }, [onClose]);
 
-  // Fermer sur Escape
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
   }, [onClose]);
 
+  const handleSubmit = useCallback(async () => {
+    if (!prenom.trim() || !email.trim()) { setError("Merci de remplir les deux champs."); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Adresse email invalide."); return; }
+    setSending(true);
+    setError("");
+    try {
+      await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prenom: prenom.trim(), email: email.trim() }),
+      });
+      localStorage.setItem(EMAIL_POPUP_KEY, "true");
+      setSent(true);
+      setTimeout(() => onClose(), 2200);
+    } catch {
+      setError("Une erreur est survenue. Réessaie.");
+      setSending(false);
+    }
+  }, [prenom, email, onClose]);
+
   return (
-    <div
-      onClick={handleOverlayClick}
-      style={{
-        position: "fixed", inset: 0, zIndex: 1000,
-        background: "rgba(0,0,0,0.45)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "20px",
-        backdropFilter: "blur(2px)",
-      }}
-    >
-      <div style={{
-        background: "#fff", borderRadius: "24px",
-        padding: "32px 28px", maxWidth: "400px", width: "100%",
-        boxShadow: "0 20px 60px rgba(0,0,0,0.18)",
-        display: "flex", flexDirection: "column", gap: "16px",
-        position: "relative",
-      }}>
-        {/* Icône */}
-        <div style={{
-          width: 52, height: 52, borderRadius: "16px",
-          background: "#EDF8F5", border: "2px solid #CDE9E1",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: "24px", margin: "0 auto",
-        }}>
-          🔒
-        </div>
+    <div onClick={handleOverlay} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", backdropFilter: "blur(2px)" }}>
+      <div style={{ background: "#fff", borderRadius: "24px", padding: "32px 28px", maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.18)", display: "flex", flexDirection: "column", gap: "16px" }}>
 
-        {/* Titre */}
-        <h2 style={{
-          fontSize: "17px", fontWeight: 900, color: "#1A1A1A",
-          textAlign: "center", margin: 0, lineHeight: 1.3,
-        }}>
-          {content.title}
-        </h2>
+        {sent ? (
+          <>
+            <div style={{ fontSize: "40px", textAlign: "center" }}>🎉</div>
+            <h2 style={{ fontSize: "17px", fontWeight: 900, color: "#006D6F", textAlign: "center", margin: 0 }}>C'est noté !</h2>
+            <p style={{ fontSize: "13px", color: "#666", textAlign: "center", margin: 0 }}>Tu recevras mes conseils très bientôt.</p>
+          </>
+        ) : (
+          <>
+            <div style={{ width: 52, height: 52, borderRadius: "16px", background: "#FFF8F0", border: "2px solid #F0C080", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px", margin: "0 auto" }}>✉️</div>
+            <h2 style={{ fontSize: "17px", fontWeight: 900, color: "#1A1A1A", textAlign: "center", margin: 0, lineHeight: 1.3 }}>
+              Reçois mes conseils pour créer des accessoires paracorde parfaits
+            </h2>
 
-        {/* Corps */}
-        <p style={{
-          fontSize: "13px", color: "#666", textAlign: "center",
-          margin: 0, lineHeight: 1.6,
-        }}>
-          {content.body}
-        </p>
+            <input
+              type="text"
+              placeholder="Ton prénom"
+              value={prenom}
+              onChange={(e) => setPrenom(e.target.value)}
+              style={{ ...inputStyle, marginTop: "4px" }}
+            />
+            <input
+              type="email"
+              placeholder="Ton adresse email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+              style={inputStyle}
+            />
 
-        {/* Bouton principal */}
-        <a
-          href="/offers"
-          style={{
-            display: "block", textAlign: "center",
-            padding: "14px 20px", borderRadius: "14px",
-            background: "#006D6F", color: "#fff",
-            fontWeight: 800, fontSize: "14px",
-            textDecoration: "none",
-            boxShadow: "0 4px 14px rgba(0,109,111,0.35)",
-            transition: "opacity 0.15s",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
-        >
-          {content.cta}
-        </a>
+            {error && (
+              <div style={{ fontSize: "12px", color: "#C0392B", background: "#FFF0ED", border: "1px solid #FFCCC7", borderRadius: "8px", padding: "8px 12px", textAlign: "center" }}>
+                {error}
+              </div>
+            )}
 
-        {/* Lien secondaire */}
-        <button
-          onClick={onClose}
-          style={{
-            background: "none", border: "none", cursor: "pointer",
-            color: "#999", fontSize: "12px", textAlign: "center",
-            padding: "4px", textDecoration: "underline",
-          }}
-        >
-          Non merci
-        </button>
+            <button
+              onClick={handleSubmit}
+              disabled={sending}
+              style={{ padding: "14px 20px", borderRadius: "14px", border: "none", background: sending ? "#B0D4D4" : "#006D6F", color: "#fff", fontWeight: 800, fontSize: "14px", cursor: sending ? "default" : "pointer", boxShadow: sending ? "none" : "0 4px 14px rgba(0,109,111,0.35)" }}
+            >
+              {sending ? "Envoi en cours…" : "Je veux recevoir les conseils"}
+            </button>
+
+            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#999", fontSize: "12px", textAlign: "center", padding: "4px", textDecoration: "underline" }}>
+              Non merci
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -312,37 +339,12 @@ function UpsellModal({ planRequired, onClose }: { planRequired: "Creator" | "Pro
 function Tooltip({ text }: { text: string }) {
   const [visible, setVisible] = useState(false);
   return (
-    <span
-      style={{ position: "relative", display: "inline-flex", alignItems: "center", marginLeft: "6px", cursor: "help" }}
-      onMouseEnter={() => setVisible(true)}
-      onMouseLeave={() => setVisible(false)}
-      onTouchStart={() => setVisible((v) => !v)}
-    >
-      <span style={{
-        width: 16, height: 16, borderRadius: "50%", background: "#E8E4DC",
-        color: "#888", fontSize: "10px", fontWeight: 900,
-        display: "inline-flex", alignItems: "center", justifyContent: "center",
-        border: "1px solid #D0CBC0", flexShrink: 0,
-      }}>?</span>
+    <span style={{ position: "relative", display: "inline-flex", alignItems: "center", marginLeft: "6px", cursor: "help" }} onMouseEnter={() => setVisible(true)} onMouseLeave={() => setVisible(false)} onTouchStart={() => setVisible((v) => !v)}>
+      <span style={{ width: 16, height: 16, borderRadius: "50%", background: "#E8E4DC", color: "#888", fontSize: "10px", fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px solid #D0CBC0", flexShrink: 0 }}>?</span>
       {visible && (
-        <span style={{
-          position: "absolute", bottom: "calc(100% + 8px)", left: "50%",
-          transform: "translateX(-50%)",
-          background: "#2A2A2A", color: "#fff",
-          fontSize: "11px", lineHeight: 1.5,
-          padding: "8px 12px", borderRadius: "10px",
-          width: "220px", textAlign: "left",
-          boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
-          zIndex: 999, pointerEvents: "none",
-          whiteSpace: "normal", fontWeight: 400,
-        }}>
+        <span style={{ position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)", background: "#2A2A2A", color: "#fff", fontSize: "11px", lineHeight: 1.5, padding: "8px 12px", borderRadius: "10px", width: "220px", textAlign: "left", boxShadow: "0 4px 16px rgba(0,0,0,0.18)", zIndex: 999, pointerEvents: "none", whiteSpace: "normal", fontWeight: 400 }}>
           {text}
-          <span style={{
-            position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)",
-            width: 0, height: 0,
-            borderLeft: "6px solid transparent", borderRight: "6px solid transparent",
-            borderTop: "6px solid #2A2A2A",
-          }} />
+          <span style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #2A2A2A" }} />
         </span>
       )}
     </span>
@@ -360,76 +362,28 @@ const AccessoryButton = memo(({ id, acc, selected, locked, onClick }: {
 ));
 
 const DifficultyButton = memo(({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) => (
-  <div onClick={onClick} title={DIFFICULTY_TOOLTIPS[label]} style={{ ...lvlBtn, border: selected ? "1px solid #006D6F" : "1px solid #E0E0E0" }}>
-    {label}
-  </div>
+  <div onClick={onClick} title={DIFFICULTY_TOOLTIPS[label]} style={{ ...lvlBtn, border: selected ? "1px solid #006D6F" : "1px solid #E0E0E0" }}>{label}</div>
 ));
 
-// ─── ColorRow avec boutons d'ordre ▲▼ ────────────────────────────────────────
 const ColorRow = memo(({ color, index, isFirst, isLast, onChange, onMoveUp, onMoveDown }: {
-  color: string; index: number;
-  isFirst: boolean; isLast: boolean;
+  color: string; index: number; isFirst: boolean; isLast: boolean;
   onChange: (i: number, v: string) => void;
   onMoveUp: (i: number) => void;
   onMoveDown: (i: number) => void;
 }) => (
   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
     <div style={{ display: "flex", flexDirection: "column", gap: "2px", flexShrink: 0 }}>
-      <button
-        onClick={() => onMoveUp(index)}
-        disabled={isFirst}
-        style={{
-          padding: "3px 6px", fontSize: "9px", lineHeight: 1,
-          borderRadius: "5px", border: "1px solid #E0E0E0",
-          background: isFirst ? "#F5F5F5" : "#fff",
-          cursor: isFirst ? "default" : "pointer",
-          opacity: isFirst ? 0.35 : 1,
-        }}
-        title="Monter"
-      >▲</button>
-      <button
-        onClick={() => onMoveDown(index)}
-        disabled={isLast}
-        style={{
-          padding: "3px 6px", fontSize: "9px", lineHeight: 1,
-          borderRadius: "5px", border: "1px solid #E0E0E0",
-          background: isLast ? "#F5F5F5" : "#fff",
-          cursor: isLast ? "default" : "pointer",
-          opacity: isLast ? 0.35 : 1,
-        }}
-        title="Descendre"
-      >▼</button>
+      <button onClick={() => onMoveUp(index)} disabled={isFirst} style={{ padding: "3px 6px", fontSize: "9px", lineHeight: 1, borderRadius: "5px", border: "1px solid #E0E0E0", background: isFirst ? "#F5F5F5" : "#fff", cursor: isFirst ? "default" : "pointer", opacity: isFirst ? 0.35 : 1 }} title="Monter">▲</button>
+      <button onClick={() => onMoveDown(index)} disabled={isLast} style={{ padding: "3px 6px", fontSize: "9px", lineHeight: 1, borderRadius: "5px", border: "1px solid #E0E0E0", background: isLast ? "#F5F5F5" : "#fff", cursor: isLast ? "default" : "pointer", opacity: isLast ? 0.35 : 1 }} title="Descendre">▼</button>
     </div>
-    <div style={{
-      width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
-      background: index === 0 ? "#006D6F" : "#E8E4DC",
-      color: index === 0 ? "#fff" : "#888",
-      fontSize: "10px", fontWeight: 900,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      border: index === 0 ? "none" : "1px solid #D0CBC0",
-    }}>
-      {index + 1}
-    </div>
+    <div style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, background: index === 0 ? "#006D6F" : "#E8E4DC", color: index === 0 ? "#fff" : "#888", fontSize: "10px", fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center", border: index === 0 ? "none" : "1px solid #D0CBC0" }}>{index + 1}</div>
     <div style={{ position: "relative", flex: 1 }}>
-      <div style={{
-        width: 10, height: 10, borderRadius: "50%", background: color,
-        position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)",
-        border: "1px solid #ccc",
-      }} />
+      <div style={{ width: 10, height: 10, borderRadius: "50%", background: color, position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", border: "1px solid #ccc" }} />
       <select value={color} onChange={(e) => onChange(index, e.target.value)} style={{ ...inputStyle, paddingLeft: "30px" }}>
         {COLORS_DATABASE.map((db) => <option key={db.hex} value={db.hex}>{db.name}</option>)}
       </select>
     </div>
-    {index === 0 && (
-      <span style={{
-        fontSize: "9px", color: "#006D6F", fontWeight: 700,
-        whiteSpace: "nowrap", background: "#EDF8F5",
-        border: "1px solid #CDE9E1", borderRadius: "6px",
-        padding: "2px 6px", flexShrink: 0,
-      }}>
-        départ
-      </span>
-    )}
+    {index === 0 && <span style={{ fontSize: "9px", color: "#006D6F", fontWeight: 700, whiteSpace: "nowrap", background: "#EDF8F5", border: "1px solid #CDE9E1", borderRadius: "6px", padding: "2px 6px", flexShrink: 0 }}>départ</span>}
   </div>
 ));
 
@@ -448,10 +402,8 @@ export default function NewCalc() {
   const [isPaused, setIsPaused]       = useState(true);
   const [saveMessage, setSaveMessage] = useState("");
   const [formData, setFormData]       = useState<FormData>(INITIAL_FORM);
-  // ─── État popup upsell ────────────────────────────────────────────────────
   const [upsellPlan, setUpsellPlan]   = useState<"Creator" | "Pro" | null>(null);
-
-  const userPlan = getUserPlan();
+  const [showEmailPopup, setShowEmailPopup] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const knotRef  = useRef<KnotPreviewHandle | null>(null);
@@ -473,7 +425,7 @@ export default function NewCalc() {
     return toCm(formData.length, formData.unit);
   }, [formData.type, formData.harnessCustomLength, formData.length, formData.unit]);
 
-  const knot = useMemo(() => KNOTS_REGISTRY.find((k) => k.id === formData.nodeId) ?? KNOTS_REGISTRY[0], [formData.nodeId]);
+  const knot     = useMemo(() => KNOTS_REGISTRY.find((k) => k.id === formData.nodeId) ?? KNOTS_REGISTRY[0], [formData.nodeId]);
   const hasNoAme = KNOTS_WITHOUT_AME.includes(formData.nodeId);
 
   const results = useMemo(() => {
@@ -481,9 +433,7 @@ export default function NewCalc() {
     const ropeFactor = formData.ropeSize === "3mm" ? 0.85 : 1.0;
     const lengthCm   = effectiveLength;
     const roundingCm = Math.max(1, toCm(formData.roundingValue, formData.unit));
-    const effectiveFactor = formData.nodeId === "TressageRond"
-      ? getTressageRondFactor(formData.colorCount)
-      : knot.factor;
+    const effectiveFactor = formData.nodeId === "TressageRond" ? getTressageRondFactor(formData.colorCount) : knot.factor;
     const perColor   = Math.ceil((lengthCm * effectiveFactor * ropeFactor * margin) / formData.colorCount / roundingCm) * roundingCm;
     const estMin     = getEstMin(knot.baseMinutes, lengthCm, formData.type, formData.model);
     const isHarnessEstimated = formData.type === "HARNAIS" || formData.type === "JOUETS";
@@ -500,10 +450,7 @@ export default function NewCalc() {
   }, [formData, knot, effectiveLength, hasNoAme]);
 
   const currentPalette = useMemo(() => formData.colors.slice(0, formData.colorCount), [formData.colors, formData.colorCount]);
-  const currentGuide   = useMemo(() => {
-    const key = `${formData.nodeId}|${formData.type}`;
-    return GUIDES_ETSY[key] ?? null;
-  }, [formData.nodeId, formData.type]);
+  const currentGuide   = useMemo(() => { const key = `${formData.nodeId}|${formData.type}`; return GUIDES_ETSY[key] ?? null; }, [formData.nodeId, formData.type]);
 
   const handleReset = useCallback(() => { setFormData(INITIAL_FORM); setTime(0); setIsPaused(true); setSaveMessage(""); }, []);
 
@@ -514,8 +461,7 @@ export default function NewCalc() {
   const handleColorMoveUp = useCallback((i: number) => {
     if (i === 0) return;
     setFormData((prev) => {
-      const colors = [...prev.colors];
-      const colorOrder = [...prev.colorOrder];
+      const colors = [...prev.colors]; const colorOrder = [...prev.colorOrder];
       [colors[i - 1], colors[i]] = [colors[i], colors[i - 1]];
       [colorOrder[i - 1], colorOrder[i]] = [colorOrder[i], colorOrder[i - 1]];
       return { ...prev, colors, colorOrder };
@@ -525,8 +471,7 @@ export default function NewCalc() {
   const handleColorMoveDown = useCallback((i: number) => {
     setFormData((prev) => {
       if (i >= prev.colorCount - 1) return prev;
-      const colors = [...prev.colors];
-      const colorOrder = [...prev.colorOrder];
+      const colors = [...prev.colors]; const colorOrder = [...prev.colorOrder];
       [colors[i], colors[i + 1]] = [colors[i + 1], colors[i]];
       [colorOrder[i], colorOrder[i + 1]] = [colorOrder[i + 1], colorOrder[i]];
       return { ...prev, colors, colorOrder };
@@ -538,14 +483,12 @@ export default function NewCalc() {
     setFormData((prev) => ({ ...prev, difficulty: diff, nodeId: first ? first.id : prev.nodeId }));
   }, []);
 
-  // ─── Clic sur un accessoire : ouvre la popup si verrouillé ───────────────
   const handleTypeChange = useCallback((key: AccessoryKey) => {
     const lock = ACCESSORIES_CONFIG[key].lock;
     if (!isAccLocked(lock)) {
       setFormData((prev) => ({ ...prev, type: key, model: ACCESSORIES_CONFIG[key].models[0] }));
       return;
     }
-    // Détermine quel plan est requis pour afficher le bon message
     const plan = getUserPlan();
     if (plan === "Creator" && lock === "Pro") {
       setUpsellPlan("Pro");
@@ -594,10 +537,15 @@ export default function NewCalc() {
     return project;
   }, [formData, results, currentPalette, time, effectiveLength]);
 
+  // ─── Au clic "Calculer et enregistrer" : sauvegarde + popup email si 1ère fois ──
   const handleCalculateAndSave = useCallback(() => {
     saveProject();
     setSaveMessage('Projet enregistré dans "Projet", "Dashboard" et "Historique".');
     setStep(2);
+    // Affiche la popup email uniquement si jamais montrée
+    if (!localStorage.getItem(EMAIL_POPUP_KEY)) {
+      setTimeout(() => setShowEmailPopup(true), 800);
+    }
   }, [saveProject]);
 
   const generatePDF = useCallback(async () => {
@@ -666,12 +614,7 @@ export default function NewCalc() {
       autoTable(doc, {
         startY: 111, margin: { left: mX, right: mX }, tableWidth: cW,
         head: [["Ordre", "Couleur", `Longueur (${formData.unit})`, `Équiv. (${equivUnit(formData.unit)})`]],
-        body: currentPalette.map((hex, i) => [
-          i === 0 ? `${i + 1} — départ` : `${i + 1}`,
-          colorNames[i],
-          fmtLen(results.perColor, formData.unit),
-          fmtLen(results.perColor, equivUnit(formData.unit)),
-        ]),
+        body: currentPalette.map((hex, i) => [i === 0 ? `${i + 1} — départ` : `${i + 1}`, colorNames[i], fmtLen(results.perColor, formData.unit), fmtLen(results.perColor, equivUnit(formData.unit))]),
         theme: "plain",
         styles: { font:"helvetica", fontSize:10, textColor:C.ink, lineColor:[80,80,80], lineWidth:0.25, cellPadding:{top:6,right:4,bottom:6,left:4}, valign:"middle", halign:"center" },
         headStyles: { fillColor:C.green, textColor:C.ink, fontStyle:"bold", minCellHeight:12 },
@@ -750,17 +693,11 @@ export default function NewCalc() {
   return (
     <div style={{ background: "#EAE3D2", minHeight: "100vh" }} className="newcalc-padding">
 
-      {/* ─── Popup upsell ──────────────────────────────────────────────────── */}
-      {upsellPlan && (
-        <UpsellModal
-          planRequired={upsellPlan}
-          onClose={() => setUpsellPlan(null)}
-        />
-      )}
+      {upsellPlan && <UpsellModal planRequired={upsellPlan} onClose={() => setUpsellPlan(null)} />}
+      {showEmailPopup && <EmailCaptureModal onClose={() => setShowEmailPopup(false)} />}
 
       {step === 1 && (
         <div className="newcalc-grid">
-
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             <div style={cardStyle}>
               <h3 style={h3Style}>GÉNÉRAL</h3>
@@ -790,11 +727,7 @@ export default function NewCalc() {
                   </option>
                 ))}
               </select>
-              {isHarness && (
-                <div style={{ fontSize: "11px", color: "#006D6F", marginTop: "8px" }}>
-                  ⭐ = nœud recommandé pour les harnais
-                </div>
-              )}
+              {isHarness && <div style={{ fontSize: "11px", color: "#006D6F", marginTop: "8px" }}>⭐ = nœud recommandé pour les harnais</div>}
             </div>
 
             <div style={cardStyle}>
@@ -812,13 +745,7 @@ export default function NewCalc() {
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "15px" }}>
                 {currentPalette.map((c, i) => (
-                  <ColorRow
-                    key={i} color={c} index={i}
-                    isFirst={i === 0} isLast={i === formData.colorCount - 1}
-                    onChange={handleColorChange}
-                    onMoveUp={handleColorMoveUp}
-                    onMoveDown={handleColorMoveDown}
-                  />
+                  <ColorRow key={i} color={c} index={i} isFirst={i === 0} isLast={i === formData.colorCount - 1} onChange={handleColorChange} onMoveUp={handleColorMoveUp} onMoveDown={handleColorMoveDown} />
                 ))}
               </div>
               {formData.colorCount > 1 && (
@@ -840,13 +767,7 @@ export default function NewCalc() {
                 </div>
               )}
               {currentGuide && (
-                <a href={currentGuide.url} target="_blank" rel="noopener noreferrer" style={{
-                  display: "flex", alignItems: "center", gap: "8px",
-                  background: "#FFF8F0", border: "1px solid #F0C080",
-                  borderRadius: "10px", padding: "8px 12px",
-                  marginBottom: "10px", textDecoration: "none",
-                  color: "#8B5A00", fontSize: "12px", fontWeight: 600,
-                }}>
+                <a href={currentGuide.url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: "8px", background: "#FFF8F0", border: "1px solid #F0C080", borderRadius: "10px", padding: "8px 12px", marginBottom: "10px", textDecoration: "none", color: "#8B5A00", fontSize: "12px", fontWeight: 600 }}>
                   <span style={{ fontSize: "16px" }}>📖</span>
                   <span>Guide disponible sur Etsy → {currentGuide.title}</span>
                 </a>
@@ -861,36 +782,17 @@ export default function NewCalc() {
               <h2 style={{ fontSize: "24px", fontWeight: "900", marginBottom: "20px" }}>Réglages finaux</h2>
               {isHarness ? (
                 <div>
-                  <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>
-                    Taille du chien
-                    <Tooltip text="Sélectionnez la taille pour pré-remplir le tour de poitrail, puis affinez la mesure exacte en cm si besoin." />
-                  </label>
+                  <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>Taille du chien<Tooltip text="Sélectionnez la taille pour pré-remplir le tour de poitrail, puis affinez la mesure exacte en cm si besoin." /></label>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "8px", marginBottom: "12px" }}>
                     {HARNESS_SIZES.map((s) => (
-                      <div key={s.value} onClick={() => handleHarnessSizeChange(s.value)}
-                        style={{ padding: "10px 4px", borderRadius: "10px", textAlign: "center", cursor: "pointer", fontWeight: "bold", fontSize: "14px",
-                          background: formData.harnessSize === s.value ? "#006D6F" : "#fff",
-                          color: formData.harnessSize === s.value ? "#fff" : "#333",
-                          border: formData.harnessSize === s.value ? "none" : "1px solid #EAEAEA" }}>
-                        {s.value}
-                      </div>
+                      <div key={s.value} onClick={() => handleHarnessSizeChange(s.value)} style={{ padding: "10px 4px", borderRadius: "10px", textAlign: "center", cursor: "pointer", fontWeight: "bold", fontSize: "14px", background: formData.harnessSize === s.value ? "#006D6F" : "#fff", color: formData.harnessSize === s.value ? "#fff" : "#333", border: formData.harnessSize === s.value ? "none" : "1px solid #EAEAEA" }}>{s.value}</div>
                     ))}
                   </div>
                   <div style={{ marginBottom: "10px" }}>
-                    <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>
-                      Tour de poitrail exact (cm)
-                      <Tooltip text="Mesurez le tour de poitrail de votre chien avec un mètre ruban et saisissez la valeur exacte. Ajoutez 2-3 cm pour l'aisance." />
-                    </label>
-                    <input
-                      type="number" min={10} max={200} step={1}
-                      value={formData.harnessCustomLength}
-                      onChange={(e) => setFormData((p) => ({ ...p, harnessCustomLength: Math.max(1, Number(e.target.value)) }))}
-                      style={inputStyle}
-                    />
+                    <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>Tour de poitrail exact (cm)<Tooltip text="Mesurez le tour de poitrail de votre chien avec un mètre ruban et saisissez la valeur exacte. Ajoutez 2-3 cm pour l'aisance." /></label>
+                    <input type="number" min={10} max={200} step={1} value={formData.harnessCustomLength} onChange={(e) => setFormData((p) => ({ ...p, harnessCustomLength: Math.max(1, Number(e.target.value)) }))} style={inputStyle} />
                   </div>
-                  <div style={{ fontSize: "12px", color: "#888", background: "#F9F9F9", borderRadius: "10px", padding: "8px 12px" }}>
-                    Référence taille <strong>{formData.harnessSize}</strong> : {currentHarnessSize.poitrail}
-                  </div>
+                  <div style={{ fontSize: "12px", color: "#888", background: "#F9F9F9", borderRadius: "10px", padding: "8px 12px" }}>Référence taille <strong>{formData.harnessSize}</strong> : {currentHarnessSize.poitrail}</div>
                 </div>
               ) : (
                 <div className="params-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
@@ -899,10 +801,7 @@ export default function NewCalc() {
                     <input type="number" step={formData.unit==="m"?"0.01":formData.unit==="in"?"0.1":"1"} value={formData.length} onChange={(e) => setFormData((p) => ({ ...p, length: Number(e.target.value) }))} style={inputStyle} />
                   </div>
                   <div>
-                    <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>
-                      Arrondi
-                      <Tooltip text="Les longueurs calculées sont arrondies au multiple de 10 supérieur. Ex : 343 cm avec un arrondi à 10 cm devient 350 cm." />
-                    </label>
+                    <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>Arrondi<Tooltip text="Les longueurs calculées sont arrondies au multiple de 10 supérieur. Ex : 343 cm avec un arrondi à 10 cm devient 350 cm." /></label>
                     <select style={inputStyle} value={formData.roundingValue} onChange={(e) => setFormData((p) => ({ ...p, roundingValue: Number(e.target.value) }))}>
                       {(formData.unit==="cm"?[5,10,25,50]:formData.unit==="m"?[0.05,0.1,0.25,0.5]:[2,4,10,20]).map((v) => <option key={v} value={v}>{v} {formData.unit}</option>)}
                     </select>
@@ -918,10 +817,7 @@ export default function NewCalc() {
                 </div>
               )}
               <div style={{ marginTop: "15px" }}>
-                <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>
-                  Épaisseur corde
-                  <Tooltip text="La paracorde 3mm consomme environ 15% moins de corde que la 4mm pour le même nœud." />
-                </label>
+                <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>Épaisseur corde<Tooltip text="La paracorde 3mm consomme environ 15% moins de corde que la 4mm pour le même nœud." /></label>
                 <select style={inputStyle} value={formData.ropeSize} onChange={(e) => setFormData((p) => ({ ...p, ropeSize: e.target.value as RopeSize }))}>
                   <option value="4mm">4 mm (standard)</option>
                   <option value="3mm">3 mm (fine)</option>
@@ -934,8 +830,7 @@ export default function NewCalc() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
               <div>
                 <div style={{ fontSize: "12px", fontWeight: 900, color: "#1A1A1A", marginBottom: "6px", display: "flex", alignItems: "center" }}>
-                  Mode sécurisé ({formData.secureMode ? "10%" : "0%"})
-                  <Tooltip text="Ajoute 10% de corde en plus pour compenser les variations de tension selon votre façon de tresser. Recommandé pour les débutantes." />
+                  Mode sécurisé ({formData.secureMode ? "10%" : "0%"})<Tooltip text="Ajoute 10% de corde en plus pour compenser les variations de tension selon votre façon de tresser. Recommandé pour les débutantes." />
                 </div>
                 <div style={{ fontSize: "12px", color: "#8C8C8C", marginBottom: "8px" }}>Marge de sécurité incluse.</div>
               </div>
@@ -955,7 +850,6 @@ export default function NewCalc() {
             </div>
             {saveMessage && <div style={saveInfoStyle}>{saveMessage}</div>}
           </div>
-
         </div>
       )}
 
@@ -986,11 +880,7 @@ export default function NewCalc() {
                       <div style={{ width: 12, height: 12, borderRadius: "50%", background: hex, border: "1px solid #ddd", flexShrink: 0 }} />
                       <span>
                         Corde {i + 1}
-                        {i === 0 && (
-                          <span style={{ marginLeft: "8px", fontSize: "10px", color: "#006D6F", fontWeight: 700, background: "#EDF8F5", border: "1px solid #CDE9E1", borderRadius: "5px", padding: "1px 5px" }}>
-                            départ
-                          </span>
-                        )}
+                        {i === 0 && <span style={{ marginLeft: "8px", fontSize: "10px", color: "#006D6F", fontWeight: 700, background: "#EDF8F5", border: "1px solid #CDE9E1", borderRadius: "5px", padding: "1px 5px" }}>départ</span>}
                         <span style={{ marginLeft: "6px", fontSize: "11px", color: "#999" }}>{colorName}</span>
                       </span>
                     </div>
@@ -1013,18 +903,13 @@ export default function NewCalc() {
               <div style={{ background: "#1A1A1A", color: "#fff", padding: "20px", borderRadius: "20px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
                   <span style={{ fontSize: "11px", opacity: 0.8 }}>CHRONO RÉEL</span>
-                  <span style={{ fontSize: "9px", background: "rgba(255,255,255,0.15)", color: "#bbb", padding: "2px 6px", borderRadius: "6px", cursor: "help" }}
-                    title="Chronométrez votre tressage pour connaître votre temps réel par projet. Indispensable pour fixer un prix de vente juste : temps × tarif horaire = coût de fabrication.">
-                    ? À quoi ça sert
-                  </span>
+                  <span style={{ fontSize: "9px", background: "rgba(255,255,255,0.15)", color: "#bbb", padding: "2px 6px", borderRadius: "6px", cursor: "help" }} title="Chronométrez votre tressage pour connaître votre temps réel par projet. Indispensable pour fixer un prix de vente juste : temps × tarif horaire = coût de fabrication.">? À quoi ça sert</span>
                 </div>
                 <div style={{ fontSize: "28px", fontWeight: "900" }}>{fmtTime(time)}</div>
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "10px" }}>
-              <button onClick={() => setIsPaused((p) => !p)} style={{ ...mainBtn, width: "100%", padding: "15px" }}>
-                {isPaused ? "▶ Démarrer le chrono" : "⏸ Pause"}
-              </button>
+              <button onClick={() => setIsPaused((p) => !p)} style={{ ...mainBtn, width: "100%", padding: "15px" }}>{isPaused ? "▶ Démarrer le chrono" : "⏸ Pause"}</button>
               <button onClick={() => setStep(1)} style={{ ...secBtn, width: "100%", marginTop: 0 }}>Retour</button>
             </div>
             <div style={{ fontSize: "12px", color: "#888", marginTop: "10px", textAlign: "center" }}>
