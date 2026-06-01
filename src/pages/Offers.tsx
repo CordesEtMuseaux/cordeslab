@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 
 const THEME = {
   colors: {
@@ -9,9 +8,8 @@ const THEME = {
     textMain: "#1F1F1F",
     textMuted: "#6B6B6B",
     border: "#EEEEEE",
-    tableHeaderBg: "#F1EBE0"
   },
-  radius: { card: "24px", button: "15px", table: "12px" }
+  radius: { card: "24px", button: "15px" }
 };
 
 interface Plan {
@@ -22,36 +20,55 @@ interface Plan {
   highlight?: boolean;
   saving?: string;
   features: string[];
+  planCode: string | null;
 }
 
 const PLANS_DATA: Record<"monthly" | "yearly", Plan[]> = {
   monthly: [
-    { name: "Atelier", price: "0€", desc: "Pour débuter sereinement", current: true, features: ["8 tressages essentiels", "Sauvegarde illimitée", "Calculs de base uniquement"] },
-    { name: "Creator", price: "9€", desc: "Pour les créateurs passionnés", highlight: true, features: ["12 tressages sélectionnés", "Sauvegarde illimitée", "Calculs Poignées", "Export PDF"] },
-    { name: "Pro", price: "19€", desc: "L'outil professionnel complet", features: ["Bibliothèque intégrale", "Sauvegarde illimitée", "Calculs Laisses & Accessoires", "Gestion client"] }
+    { name: "Atelier", price: "0€", desc: "Pour débuter sereinement", current: true, planCode: null, features: ["8 tressages essentiels", "Sauvegarde illimitée", "Calculs de base uniquement"] },
+    { name: "Creator", price: "9€", desc: "Pour les créateurs passionnés", highlight: true, planCode: "creator_monthly", features: ["12 tressages sélectionnés", "Sauvegarde illimitée", "Calculs Poignées", "Export PDF"] },
+    { name: "Pro",     price: "19€", desc: "L'outil professionnel complet", planCode: "pro_monthly", features: ["Bibliothèque intégrale", "Sauvegarde illimitée", "Calculs Laisses & Accessoires", "Gestion client"] }
   ],
   yearly: [
-    { name: "Atelier", price: "0€", desc: "Pour débuter sereinement", current: true, features: ["8 tressages essentiels", "Sauvegarde illimitée", "Calculs de base uniquement"] },
-    { name: "Creator", price: "79€", desc: "Pour les créateurs passionnés", highlight: true, saving: "Économisez 29€/an", features: ["12 tressages sélectionnés", "Sauvegarde illimitée", "Calculs Poignées", "Export PDF"] },
-    { name: "Pro", price: "179€", desc: "L'outil professionnel complet", saving: "Économisez 49€/an", features: ["Bibliothèque intégrale", "Sauvegarde illimitée", "Calculs Laisses & Accessoires", "Gestion client"] }
+    { name: "Atelier", price: "0€",   desc: "Pour débuter sereinement",       current: true, planCode: null,             features: ["8 tressages essentiels", "Sauvegarde illimitée", "Calculs de base uniquement"] },
+    { name: "Creator", price: "79€",  desc: "Pour les créateurs passionnés",  highlight: true, saving: "Économisez 29€/an", planCode: "creator_yearly",   features: ["12 tressages sélectionnés", "Sauvegarde illimitée", "Calculs Poignées", "Export PDF"] },
+    { name: "Pro",     price: "179€", desc: "L'outil professionnel complet",  saving: "Économisez 49€/an", planCode: "pro_yearly", features: ["Bibliothèque intégrale", "Sauvegarde illimitée", "Calculs Laisses & Accessoires", "Gestion client"] }
   ]
 };
 
 const COMPARISON_FEATURES = [
-  { section: "Création", name: "Fabrication de Colliers", atelier: "Oui", creator: "Oui", pro: "Oui" },
-  { section: "Création", name: "Calculs Poignées", atelier: "Non", creator: "Oui", pro: "Oui" },
-  { section: "Création", name: "Calculs Laisses (Simples & Multi.)", atelier: "Non", creator: "Non", pro: "Oui" },
-  { section: "Création", name: "Tous les accessoires (Jouets...)", atelier: "Non", creator: "Non", pro: "Oui" },
-  { section: "Fonctionnalités", name: "Sauvegarde Projets", atelier: "Illimitée", creator: "Illimitée", pro: "Illimitée" },
-  { section: "Fonctionnalités", name: "Catalogue de nœuds", atelier: "8 essentiels", creator: "12 sélectionnés", pro: "Intégral" },
-  { section: "Outils", name: "Exports PDF des plans", atelier: "Non", creator: "Oui", pro: "Oui" },
-  { section: "Outils", name: "Portail Stripe (Abonnement)", atelier: "Non", creator: "Oui", pro: "Oui" },
+  { name: "Fabrication de Colliers",          atelier: "Oui",           creator: "Oui",              pro: "Oui" },
+  { name: "Calculs Poignées",                 atelier: "Non",           creator: "Oui",              pro: "Oui" },
+  { name: "Calculs Laisses (Simples & Multi.)",atelier: "Non",          creator: "Non",              pro: "Oui" },
+  { name: "Tous les accessoires (Jouets...)", atelier: "Non",           creator: "Non",              pro: "Oui" },
+  { name: "Sauvegarde Projets",               atelier: "Illimitée",     creator: "Illimitée",        pro: "Illimitée" },
+  { name: "Catalogue de nœuds",               atelier: "8 essentiels",  creator: "12 sélectionnés",  pro: "Intégral" },
+  { name: "Exports PDF des plans",            atelier: "Non",           creator: "Oui",              pro: "Oui" },
 ];
 
 export default function Offers() {
-  const navigate = useNavigate();
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+  const [loadingPlan, setLoadingPlan]   = useState<string | null>(null);
+  const [error, setError]               = useState("");
   const currentPlans = PLANS_DATA[billingCycle];
+
+  const handleChoosePlan = async (planCode: string) => {
+    setLoadingPlan(planCode);
+    setError("");
+    try {
+      const res = await fetch("/api/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planCode }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || "Erreur Stripe");
+      window.location.href = data.url;
+    } catch (err: any) {
+      setError("Une erreur est survenue. Réessaie dans quelques instants.");
+      setLoadingPlan(null);
+    }
+  };
 
   return (
     <div style={{ padding: "24px 16px", maxWidth: "1200px", margin: "0 auto", backgroundColor: THEME.colors.primaryBg, minHeight: "100vh", fontFamily: "sans-serif" }}>
@@ -61,7 +78,7 @@ export default function Offers() {
         <h1 style={{ fontSize: "24px", fontWeight: "900", color: THEME.colors.textMain }}>Comparatif des fonctionnalités</h1>
       </div>
 
-      <div style={{ background: THEME.colors.cardBg, borderRadius: THEME.radius.card, border: `1px solid ${THEME.colors.border}`, marginBottom: "48px", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+      <div style={{ background: THEME.colors.cardBg, borderRadius: THEME.radius.card, border: `1px solid ${THEME.colors.border}`, marginBottom: "48px", overflowX: "auto" }}>
         <table style={{ width: "100%", minWidth: "300px", borderCollapse: "collapse", textAlign: "left" }}>
           <thead>
             <tr style={{ borderBottom: `2px solid ${THEME.colors.primaryBg}` }}>
@@ -74,7 +91,7 @@ export default function Offers() {
           <tbody>
             {COMPARISON_FEATURES.map((f, i) => (
               <tr key={i} style={{ borderBottom: `1px solid ${THEME.colors.border}` }}>
-                <td style={{ padding: "10px 6px", fontSize: "12px", fontWeight: "500", width: "40%" }}>{f.name}</td>
+                <td style={{ padding: "10px 6px", fontSize: "12px", fontWeight: "500" }}>{f.name}</td>
                 <td style={{ padding: "10px 4px", textAlign: "center", color: THEME.colors.textMuted, fontSize: "12px" }}>{f.atelier}</td>
                 <td style={{ padding: "10px 4px", textAlign: "center", color: THEME.colors.accent, fontWeight: "bold", fontSize: "12px" }}>{f.creator}</td>
                 <td style={{ padding: "10px 4px", textAlign: "center", fontSize: "12px" }}>{f.pro}</td>
@@ -88,10 +105,16 @@ export default function Offers() {
       <div style={{ textAlign: "center", marginBottom: "32px" }}>
         <h2 style={{ fontSize: "28px", fontWeight: "900", color: THEME.colors.textMain }}>Nos forfaits</h2>
         <div style={{ display: "inline-flex", background: THEME.colors.cardBg, padding: "5px", borderRadius: "50px", marginTop: "16px", border: `1px solid ${THEME.colors.border}` }}>
-          <button onClick={() => setBillingCycle("monthly")} style={{ padding: "10px 20px", borderRadius: "50px", border: "none", cursor: "pointer", fontWeight: "bold", background: billingCycle === "monthly" ? THEME.colors.accent : "transparent", color: billingCycle === "monthly" ? "#fff" : THEME.colors.textMuted, transition: "0.3s" }}>Mensuel</button>
-          <button onClick={() => setBillingCycle("yearly")} style={{ padding: "10px 20px", borderRadius: "50px", border: "none", cursor: "pointer", fontWeight: "bold", background: billingCycle === "yearly" ? THEME.colors.accent : "transparent", color: billingCycle === "yearly" ? "#fff" : THEME.colors.textMuted, transition: "0.3s" }}>Annuel</button>
+          <button onClick={() => setBillingCycle("monthly")} style={{ padding: "10px 20px", borderRadius: "50px", border: "none", cursor: "pointer", fontWeight: "bold", background: billingCycle === "monthly" ? THEME.colors.accent : "transparent", color: billingCycle === "monthly" ? "#fff" : THEME.colors.textMuted }}>Mensuel</button>
+          <button onClick={() => setBillingCycle("yearly")}  style={{ padding: "10px 20px", borderRadius: "50px", border: "none", cursor: "pointer", fontWeight: "bold", background: billingCycle === "yearly"  ? THEME.colors.accent : "transparent", color: billingCycle === "yearly"  ? "#fff" : THEME.colors.textMuted }}>Annuel</button>
         </div>
       </div>
+
+      {error && (
+        <div style={{ background: "#FFF0ED", border: "1px solid #FFCCC7", borderRadius: "12px", padding: "12px 16px", marginBottom: "20px", color: "#C0392B", textAlign: "center", fontSize: "14px" }}>
+          {error}
+        </div>
+      )}
 
       {/* CARTES */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "20px" }}>
@@ -119,9 +142,20 @@ export default function Offers() {
               ))}
             </ul>
             <button
-              onClick={() => plan.current ? null : navigate("/thank-you")}
-              style={{ width: "100%", padding: "14px", borderRadius: THEME.radius.button, border: "none", background: plan.current ? "#F5F5F5" : THEME.colors.accent, color: plan.current ? THEME.colors.textMuted : "#fff", fontWeight: "bold", cursor: plan.current ? "default" : "pointer", transition: "0.2s" }}>
-              {plan.current ? "Forfait actuel" : `Choisir ${plan.name}`}
+              onClick={() => plan.planCode ? handleChoosePlan(plan.planCode) : undefined}
+              disabled={plan.current || loadingPlan === plan.planCode}
+              style={{
+                width: "100%", padding: "14px", borderRadius: THEME.radius.button, border: "none",
+                background: plan.current ? "#F5F5F5" : THEME.colors.accent,
+                color: plan.current ? THEME.colors.textMuted : "#fff",
+                fontWeight: "bold", cursor: plan.current ? "default" : "pointer",
+                opacity: loadingPlan && loadingPlan !== plan.planCode ? 0.6 : 1,
+              }}>
+              {plan.current
+                ? "Forfait actuel"
+                : loadingPlan === plan.planCode
+                  ? "Redirection…"
+                  : `Choisir ${plan.name}`}
             </button>
           </div>
         ))}

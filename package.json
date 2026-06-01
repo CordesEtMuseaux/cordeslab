@@ -12,6 +12,7 @@
   "dependencies": {
     "@stripe/stripe-js": "^8.9.0",
     "@types/three": "^0.150.0",
+    "@vercel/node": "^5.8.8",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
