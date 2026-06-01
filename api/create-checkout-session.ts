@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import Stripe from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-04-10",
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+  apiVersion: "2025-05-28.basil",
 });
 
 const PRICE_MAP: Record<string, string | undefined> = {
@@ -33,8 +33,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     res.status(200).json({ url: session.url });
-  } catch (err: any) {
-    console.error("Stripe error:", err);
-    res.status(500).json({ error: err.message });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Erreur inconnue";
+    console.error("Stripe error:", message);
+    res.status(500).json({ error: message });
   }
 }
