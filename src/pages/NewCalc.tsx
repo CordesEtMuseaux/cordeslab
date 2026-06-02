@@ -8,7 +8,6 @@ import FishtailPreview from "../components/Debutant/FishtailPreview";
 import LadderRackPreview from "../components/Debutant/LadderRackPreview";
 import SnakeKnotPreview from "../components/Debutant/SnakeKnotPreview";
 import SpiralPreview from "../components/Debutant/SpiralPreview";
-import SquareKnotPreview from "../components/Debutant/SquareKnotPreview";
 import TrilobitePreview from "../components/Intermediaire/TrilobitePreview";
 import CrownSinnetPreview from "../components/Intermediaire/CrownSinnetPreview";
 import TressageRondPreview from "../components/Intermediaire/TressageRondPreview";
@@ -79,9 +78,7 @@ const UPSELL_CONTENT: Record<string, { title: string; body: string; cta: string 
   },
 };
 
-// ─── Clé localStorage pour la popup email ────────────────────────────────────
 const EMAIL_POPUP_KEY = "cordeslab_email_popup_shown";
-// ─── URL Google Apps Script ───────────────────────────────────────────────────
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwB13N-t_tggjVKIk54DBhpKnQjK2EZfblejGDG_8YRvvZU9iAzRISY23jKkFCIdxx4/exec";
 
 type AccessoryKey = keyof typeof ACCESSORIES_CONFIG;
@@ -111,12 +108,11 @@ const KNOTS_REGISTRY = [
   { id: "LadderRack",   name: "Ladder Rack",  difficulty: "Débutant",      component: LadderRackPreview,   factor: 20, order: 3, is3D: true, baseMinutes: 50,  calibrated: false },
   { id: "SnakeKnot",    name: "Snake Knot",   difficulty: "Débutant",      component: SnakeKnotPreview,    factor: 14, order: 4, is3D: true, baseMinutes: 35,  calibrated: false },
   { id: "Spiral",       name: "Spiral",       difficulty: "Débutant",      component: SpiralPreview,       factor: 16, order: 5, is3D: true, baseMinutes: 40,  calibrated: false },
-  { id: "SquareKnot",   name: "Square Knot",  difficulty: "Débutant",      component: SquareKnotPreview,   factor: 18, order: 6, is3D: true, baseMinutes: 45,  calibrated: false },
   { id: "Trilobite",    name: "Trilobite",    difficulty: "Intermédiaire", component: TrilobitePreview,    factor: 24, order: 1, is3D: true, baseMinutes: 70,  calibrated: false },
   { id: "CrownSinnet",  name: "Crown Sinnet", difficulty: "Intermédiaire", component: CrownSinnetPreview,  factor: 16, order: 2, is3D: true, baseMinutes: 60,  calibrated: false },
   { id: "TressageRond", name: "Tressage Rond",difficulty: "Intermédiaire", component: TressageRondPreview, factor: 14, order: 3, is3D: true, baseMinutes: 55,  calibrated: true  },
   { id: "ViperWeave",   name: "Viper Weave",  difficulty: "Intermédiaire", component: ViperWeavePreview,   factor: 22, order: 4, is3D: true, baseMinutes: 65,  calibrated: false },
-  { id: "KingCobra",    name: "King Cobra",   difficulty: "Avancé",        component: KingCobraPreview,    factor: 35, order: 1, is3D: true, baseMinutes: 90,  calibrated: false },
+  { id: "KingCobra",    name: "King Cobra",   difficulty: "Avancé",        component: KingCobraPreview,    factor: 8,  order: 1, is3D: true, baseMinutes: 90,  calibrated: true  },
   { id: "Sanctified",   name: "Sanctified",   difficulty: "Avancé",        component: SanctifiedPreview,   factor: 28, order: 2, is3D: true, baseMinutes: 80,  calibrated: false },
   { id: "SharkJawbone", name: "Shark Jawbone",difficulty: "Avancé",        component: SharkJawbonePreview, factor: 30, order: 3, is3D: true, baseMinutes: 85,  calibrated: false },
   { id: "AztecSunBar",  name: "Aztec Sun Bar",difficulty: "Expert",        component: AztecSunBarPreview,  factor: 40, order: 1, is3D: true, baseMinutes: 105, calibrated: false },
@@ -216,7 +212,6 @@ type StoredProject = {
   timeSpent: number; createdAt: string; updatedAt: string;
 };
 
-// ─── Popup upsell ─────────────────────────────────────────────────────────────
 function UpsellModal({ planRequired, onClose }: { planRequired: "Creator" | "Pro"; onClose: () => void }) {
   const content = UPSELL_CONTENT[planRequired];
   const handleOverlay = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -240,95 +235,45 @@ function UpsellModal({ planRequired, onClose }: { planRequired: "Creator" | "Pro
   );
 }
 
-// ─── Popup capture email ──────────────────────────────────────────────────────
 function EmailCaptureModal({ onClose }: { onClose: () => void }) {
   const [prenom, setPrenom]   = useState("");
   const [email, setEmail]     = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent]       = useState(false);
   const [error, setError]     = useState("");
-
   const handleOverlay = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) onClose();
   }, [onClose]);
-
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
-
   const handleSubmit = useCallback(async () => {
     if (!prenom.trim() || !email.trim()) { setError("Merci de remplir les deux champs."); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("Adresse email invalide."); return; }
-    setSending(true);
-    setError("");
+    setSending(true); setError("");
     try {
-      await fetch(APPS_SCRIPT_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prenom: prenom.trim(), email: email.trim() }),
-      });
+      await fetch(APPS_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prenom: prenom.trim(), email: email.trim() }) });
       localStorage.setItem(EMAIL_POPUP_KEY, "true");
       setSent(true);
       setTimeout(() => onClose(), 2200);
-    } catch {
-      setError("Une erreur est survenue. Réessaie.");
-      setSending(false);
-    }
+    } catch { setError("Une erreur est survenue. Réessaie."); setSending(false); }
   }, [prenom, email, onClose]);
-
   return (
     <div onClick={handleOverlay} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", backdropFilter: "blur(2px)" }}>
       <div style={{ background: "#fff", borderRadius: "24px", padding: "32px 28px", maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.18)", display: "flex", flexDirection: "column", gap: "16px" }}>
-
         {sent ? (
-          <>
-            <div style={{ fontSize: "40px", textAlign: "center" }}>🎉</div>
-            <h2 style={{ fontSize: "17px", fontWeight: 900, color: "#006D6F", textAlign: "center", margin: 0 }}>C'est noté !</h2>
-            <p style={{ fontSize: "13px", color: "#666", textAlign: "center", margin: 0 }}>Tu recevras mes conseils très bientôt.</p>
-          </>
+          <><div style={{ fontSize: "40px", textAlign: "center" }}>🎉</div><h2 style={{ fontSize: "17px", fontWeight: 900, color: "#006D6F", textAlign: "center", margin: 0 }}>C'est noté !</h2><p style={{ fontSize: "13px", color: "#666", textAlign: "center", margin: 0 }}>Tu recevras mes conseils très bientôt.</p></>
         ) : (
           <>
             <div style={{ width: 52, height: 52, borderRadius: "16px", background: "#FFF8F0", border: "2px solid #F0C080", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px", margin: "0 auto" }}>✉️</div>
-            <h2 style={{ fontSize: "17px", fontWeight: 900, color: "#1A1A1A", textAlign: "center", margin: 0, lineHeight: 1.3 }}>
-              Reçois mes conseils pour créer des accessoires paracorde parfaits
-            </h2>
-
-            <input
-              type="text"
-              placeholder="Ton prénom"
-              value={prenom}
-              onChange={(e) => setPrenom(e.target.value)}
-              style={{ ...inputStyle, marginTop: "4px" }}
-            />
-            <input
-              type="email"
-              placeholder="Ton adresse email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
-              style={inputStyle}
-            />
-
-            {error && (
-              <div style={{ fontSize: "12px", color: "#C0392B", background: "#FFF0ED", border: "1px solid #FFCCC7", borderRadius: "8px", padding: "8px 12px", textAlign: "center" }}>
-                {error}
-              </div>
-            )}
-
-            <button
-              onClick={handleSubmit}
-              disabled={sending}
-              style={{ padding: "14px 20px", borderRadius: "14px", border: "none", background: sending ? "#B0D4D4" : "#006D6F", color: "#fff", fontWeight: 800, fontSize: "14px", cursor: sending ? "default" : "pointer", boxShadow: sending ? "none" : "0 4px 14px rgba(0,109,111,0.35)" }}
-            >
-              {sending ? "Envoi en cours…" : "Je veux recevoir les conseils"}
-            </button>
-
-            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#999", fontSize: "12px", textAlign: "center", padding: "4px", textDecoration: "underline" }}>
-              Non merci
-            </button>
+            <h2 style={{ fontSize: "17px", fontWeight: 900, color: "#1A1A1A", textAlign: "center", margin: 0, lineHeight: 1.3 }}>Reçois mes conseils pour créer des accessoires paracorde parfaits</h2>
+            <input type="text" placeholder="Ton prénom" value={prenom} onChange={(e) => setPrenom(e.target.value)} style={{ ...inputStyle, marginTop: "4px" }} />
+            <input type="email" placeholder="Ton adresse email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }} style={inputStyle} />
+            {error && <div style={{ fontSize: "12px", color: "#C0392B", background: "#FFF0ED", border: "1px solid #FFCCC7", borderRadius: "8px", padding: "8px 12px", textAlign: "center" }}>{error}</div>}
+            <button onClick={handleSubmit} disabled={sending} style={{ padding: "14px 20px", borderRadius: "14px", border: "none", background: sending ? "#B0D4D4" : "#006D6F", color: "#fff", fontWeight: 800, fontSize: "14px", cursor: sending ? "default" : "pointer", boxShadow: sending ? "none" : "0 4px 14px rgba(0,109,111,0.35)" }}>{sending ? "Envoi en cours…" : "Je veux recevoir les conseils"}</button>
+            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#999", fontSize: "12px", textAlign: "center", padding: "4px", textDecoration: "underline" }}>Non merci</button>
           </>
         )}
       </div>
@@ -341,19 +286,12 @@ function Tooltip({ text }: { text: string }) {
   return (
     <span style={{ position: "relative", display: "inline-flex", alignItems: "center", marginLeft: "6px", cursor: "help" }} onMouseEnter={() => setVisible(true)} onMouseLeave={() => setVisible(false)} onTouchStart={() => setVisible((v) => !v)}>
       <span style={{ width: 16, height: 16, borderRadius: "50%", background: "#E8E4DC", color: "#888", fontSize: "10px", fontWeight: 900, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px solid #D0CBC0", flexShrink: 0 }}>?</span>
-      {visible && (
-        <span style={{ position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)", background: "#2A2A2A", color: "#fff", fontSize: "11px", lineHeight: 1.5, padding: "8px 12px", borderRadius: "10px", width: "220px", textAlign: "left", boxShadow: "0 4px 16px rgba(0,0,0,0.18)", zIndex: 999, pointerEvents: "none", whiteSpace: "normal", fontWeight: 400 }}>
-          {text}
-          <span style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #2A2A2A" }} />
-        </span>
-      )}
+      {visible && (<span style={{ position: "absolute", bottom: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)", background: "#2A2A2A", color: "#fff", fontSize: "11px", lineHeight: 1.5, padding: "8px 12px", borderRadius: "10px", width: "220px", textAlign: "left", boxShadow: "0 4px 16px rgba(0,0,0,0.18)", zIndex: 999, pointerEvents: "none", whiteSpace: "normal", fontWeight: 400 }}>{text}<span style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "6px solid transparent", borderRight: "6px solid transparent", borderTop: "6px solid #2A2A2A" }} /></span>)}
     </span>
   );
 }
 
-const AccessoryButton = memo(({ id, acc, selected, locked, onClick }: {
-  id: string; acc: typeof ACCESSORIES_CONFIG[AccessoryKey]; selected: boolean; locked: boolean; onClick: () => void;
-}) => (
+const AccessoryButton = memo(({ id, acc, selected, locked, onClick }: { id: string; acc: typeof ACCESSORIES_CONFIG[AccessoryKey]; selected: boolean; locked: boolean; onClick: () => void; }) => (
   <div onClick={onClick} style={{ ...accBtn, background: selected ? "#006D6F" : "#fff", color: selected ? "#fff" : "#333", position: "relative", opacity: locked ? 0.72 : 1 }}>
     <div style={{ fontSize: "20px" }}>{acc.icon}</div>
     <div style={{ fontSize: "10px", fontWeight: "bold" }}>{acc.label}</div>
@@ -365,12 +303,7 @@ const DifficultyButton = memo(({ label, selected, onClick }: { label: string; se
   <div onClick={onClick} title={DIFFICULTY_TOOLTIPS[label]} style={{ ...lvlBtn, border: selected ? "1px solid #006D6F" : "1px solid #E0E0E0" }}>{label}</div>
 ));
 
-const ColorRow = memo(({ color, index, isFirst, isLast, onChange, onMoveUp, onMoveDown }: {
-  color: string; index: number; isFirst: boolean; isLast: boolean;
-  onChange: (i: number, v: string) => void;
-  onMoveUp: (i: number) => void;
-  onMoveDown: (i: number) => void;
-}) => (
+const ColorRow = memo(({ color, index, isFirst, isLast, onChange, onMoveUp, onMoveDown }: { color: string; index: number; isFirst: boolean; isLast: boolean; onChange: (i: number, v: string) => void; onMoveUp: (i: number) => void; onMoveDown: (i: number) => void; }) => (
   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
     <div style={{ display: "flex", flexDirection: "column", gap: "2px", flexShrink: 0 }}>
       <button onClick={() => onMoveUp(index)} disabled={isFirst} style={{ padding: "3px 6px", fontSize: "9px", lineHeight: 1, borderRadius: "5px", border: "1px solid #E0E0E0", background: isFirst ? "#F5F5F5" : "#fff", cursor: isFirst ? "default" : "pointer", opacity: isFirst ? 0.35 : 1 }} title="Monter">▲</button>
@@ -409,11 +342,7 @@ export default function NewCalc() {
   const knotRef  = useRef<KnotPreviewHandle | null>(null);
 
   useEffect(() => { setTime(0); setIsPaused(true); }, [formData.nodeId]);
-  useEffect(() => {
-    if (!saveMessage) return;
-    const t = setTimeout(() => setSaveMessage(""), 2500);
-    return () => clearTimeout(t);
-  }, [saveMessage]);
+  useEffect(() => { if (!saveMessage) return; const t = setTimeout(() => setSaveMessage(""), 2500); return () => clearTimeout(t); }, [saveMessage]);
   useEffect(() => {
     if (!isPaused) { timerRef.current = setInterval(() => setTime((t) => t + 1), 1000); }
     else { if (timerRef.current) clearInterval(timerRef.current); }
@@ -453,62 +382,25 @@ export default function NewCalc() {
   const currentGuide   = useMemo(() => { const key = `${formData.nodeId}|${formData.type}`; return GUIDES_ETSY[key] ?? null; }, [formData.nodeId, formData.type]);
 
   const handleReset = useCallback(() => { setFormData(INITIAL_FORM); setTime(0); setIsPaused(true); setSaveMessage(""); }, []);
-
-  const handleColorChange = useCallback((i: number, value: string) => {
-    setFormData((prev) => { const colors = [...prev.colors]; colors[i] = value; return { ...prev, colors }; });
-  }, []);
-
+  const handleColorChange = useCallback((i: number, value: string) => { setFormData((prev) => { const colors = [...prev.colors]; colors[i] = value; return { ...prev, colors }; }); }, []);
   const handleColorMoveUp = useCallback((i: number) => {
     if (i === 0) return;
-    setFormData((prev) => {
-      const colors = [...prev.colors]; const colorOrder = [...prev.colorOrder];
-      [colors[i - 1], colors[i]] = [colors[i], colors[i - 1]];
-      [colorOrder[i - 1], colorOrder[i]] = [colorOrder[i], colorOrder[i - 1]];
-      return { ...prev, colors, colorOrder };
-    });
+    setFormData((prev) => { const colors = [...prev.colors]; const colorOrder = [...prev.colorOrder]; [colors[i-1],colors[i]]=[colors[i],colors[i-1]]; [colorOrder[i-1],colorOrder[i]]=[colorOrder[i],colorOrder[i-1]]; return { ...prev, colors, colorOrder }; });
   }, []);
-
   const handleColorMoveDown = useCallback((i: number) => {
-    setFormData((prev) => {
-      if (i >= prev.colorCount - 1) return prev;
-      const colors = [...prev.colors]; const colorOrder = [...prev.colorOrder];
-      [colors[i], colors[i + 1]] = [colors[i + 1], colors[i]];
-      [colorOrder[i], colorOrder[i + 1]] = [colorOrder[i + 1], colorOrder[i]];
-      return { ...prev, colors, colorOrder };
-    });
+    setFormData((prev) => { if (i >= prev.colorCount-1) return prev; const colors=[...prev.colors]; const colorOrder=[...prev.colorOrder]; [colors[i],colors[i+1]]=[colors[i+1],colors[i]]; [colorOrder[i],colorOrder[i+1]]=[colorOrder[i+1],colorOrder[i]]; return { ...prev, colors, colorOrder }; });
   }, []);
-
-  const handleDifficultyChange = useCallback((diff: string) => {
-    const first = KNOTS_REGISTRY.find((k) => k.difficulty === diff);
-    setFormData((prev) => ({ ...prev, difficulty: diff, nodeId: first ? first.id : prev.nodeId }));
-  }, []);
-
+  const handleDifficultyChange = useCallback((diff: string) => { const first = KNOTS_REGISTRY.find((k) => k.difficulty === diff); setFormData((prev) => ({ ...prev, difficulty: diff, nodeId: first ? first.id : prev.nodeId })); }, []);
   const handleTypeChange = useCallback((key: AccessoryKey) => {
     const lock = ACCESSORIES_CONFIG[key].lock;
-    if (!isAccLocked(lock)) {
-      setFormData((prev) => ({ ...prev, type: key, model: ACCESSORIES_CONFIG[key].models[0] }));
-      return;
-    }
+    if (!isAccLocked(lock)) { setFormData((prev) => ({ ...prev, type: key, model: ACCESSORIES_CONFIG[key].models[0] })); return; }
     const plan = getUserPlan();
-    if (plan === "Creator" && lock === "Pro") {
-      setUpsellPlan("Pro");
-    } else {
-      setUpsellPlan(lock === "Pro" ? "Pro" : "Creator");
-    }
+    if (plan === "Creator" && lock === "Pro") { setUpsellPlan("Pro"); } else { setUpsellPlan(lock === "Pro" ? "Pro" : "Creator"); }
   }, []);
-
   const handleUnitChange = useCallback((nextUnit: LengthUnit) => {
-    setFormData((prev) => {
-      const lCm = toCm(prev.length, prev.unit);
-      const rCm = toCm(prev.roundingValue, prev.unit);
-      return { ...prev, unit: nextUnit, length: roundDisp(fromCm(lCm, nextUnit), nextUnit), roundingValue: roundDisp(fromCm(rCm, nextUnit), nextUnit) };
-    });
+    setFormData((prev) => { const lCm=toCm(prev.length,prev.unit); const rCm=toCm(prev.roundingValue,prev.unit); return { ...prev, unit: nextUnit, length: roundDisp(fromCm(lCm,nextUnit),nextUnit), roundingValue: roundDisp(fromCm(rCm,nextUnit),nextUnit) }; });
   }, []);
-
-  const handleHarnessSizeChange = useCallback((size: HarnessSize) => {
-    const s = HARNESS_SIZES.find(h => h.value === size);
-    setFormData((prev) => ({ ...prev, harnessSize: size, harnessCustomLength: s ? s.lengthCm : prev.harnessCustomLength }));
-  }, []);
+  const handleHarnessSizeChange = useCallback((size: HarnessSize) => { const s=HARNESS_SIZES.find(h=>h.value===size); setFormData((prev) => ({ ...prev, harnessSize: size, harnessCustomLength: s ? s.lengthCm : prev.harnessCustomLength })); }, []);
 
   const saveProject = useCallback((): StoredProject => {
     const now = new Date().toISOString();
@@ -537,15 +429,11 @@ export default function NewCalc() {
     return project;
   }, [formData, results, currentPalette, time, effectiveLength]);
 
-  // ─── Au clic "Calculer et enregistrer" : sauvegarde + popup email si 1ère fois ──
   const handleCalculateAndSave = useCallback(() => {
     saveProject();
     setSaveMessage('Projet enregistré dans "Projet", "Dashboard" et "Historique".');
     setStep(2);
-    // Affiche la popup email uniquement si jamais montrée
-    if (!localStorage.getItem(EMAIL_POPUP_KEY)) {
-      setTimeout(() => setShowEmailPopup(true), 800);
-    }
+    if (!localStorage.getItem(EMAIL_POPUP_KEY)) { setTimeout(() => setShowEmailPopup(true), 800); }
   }, [saveProject]);
 
   const generatePDF = useCallback(async () => {
@@ -563,11 +451,7 @@ export default function NewCalc() {
     };
     const colorNames = currentPalette.map((hex) => COLORS_DATABASE.find((c) => c.hex.toLowerCase() === hex.toLowerCase())?.name ?? hex);
     const bg = () => { doc.setFillColor(...C.pageBg); doc.rect(0, 0, pageW, pageH, "F"); };
-    const footer = (n: number) => {
-      doc.setDrawColor(...C.border); doc.setLineWidth(0.6); doc.line(mX, pageH-14, pageW-mX, pageH-14);
-      doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...C.muted);
-      doc.text(`Page ${n} / 2`, pageW-mX, pageH-9.2, { align: "right" });
-    };
+    const footer = (n: number) => { doc.setDrawColor(...C.border); doc.setLineWidth(0.6); doc.line(mX, pageH-14, pageW-mX, pageH-14); doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...C.muted); doc.text(`Page ${n} / 2`, pageW-mX, pageH-9.2, { align: "right" }); };
     const header = () => {
       doc.setTextColor(...C.ink); doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.text("CordesLab", mX, 16);
       doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...C.muted);
@@ -578,28 +462,21 @@ export default function NewCalc() {
       doc.setDrawColor(...C.border); doc.setLineWidth(0.7); doc.line(mX, 33.5, pageW-mX, 33.5);
     };
     const section = (y: number, title: string, accent: [number,number,number]) => {
-      doc.setFillColor(...C.beige); doc.setDrawColor(...C.border); doc.setLineWidth(0.5);
-      doc.roundedRect(mX, y, cW, 8.5, 3, 3, "FD");
+      doc.setFillColor(...C.beige); doc.setDrawColor(...C.border); doc.setLineWidth(0.5); doc.roundedRect(mX, y, cW, 8.5, 3, 3, "FD");
       doc.setFillColor(...accent); doc.roundedRect(mX+1.4, y+1.2, 2.2, 6.1, 1.1, 1.1, "F");
-      doc.setFont("helvetica","bold"); doc.setFontSize(11.5); doc.setTextColor(...C.ink);
-      doc.text(title, mX+5, y+5.8);
+      doc.setFont("helvetica","bold"); doc.setFontSize(11.5); doc.setTextColor(...C.ink); doc.text(title, mX+5, y+5.8);
     };
     const accentCard = (x: number, y: number, w: number, h: number, accent: [number,number,number]) => {
-      doc.setFillColor(...C.beige); doc.setDrawColor(...C.border); doc.setLineWidth(0.65);
-      doc.roundedRect(x, y, w, h, 7, 7, "FD");
+      doc.setFillColor(...C.beige); doc.setDrawColor(...C.border); doc.setLineWidth(0.65); doc.roundedRect(x, y, w, h, 7, 7, "FD");
       doc.setFillColor(...accent); doc.roundedRect(x+3.5, y+3.2, 2.2, h-6.4, 1.1, 1.1, "F");
     };
     try {
       let imgData = "";
       if (knotRef.current?.getSnapshot) { imgData = knotRef.current.getSnapshot(); }
-      else {
-        const el = document.getElementById("pdf-knot-preview");
-        if (el) { const canvas = await html2canvas(el, { scale: 3, useCORS: true, backgroundColor: null, logging: false }); imgData = canvas.toDataURL("image/png"); }
-      }
+      else { const el = document.getElementById("pdf-knot-preview"); if (el) { const canvas = await html2canvas(el, { scale: 3, useCORS: true, backgroundColor: null, logging: false }); imgData = canvas.toDataURL("image/png"); } }
       bg(); header();
       section(38, "Visuel du nœud", C.green);
-      doc.setFillColor(...C.pageBg); doc.setDrawColor(...C.softBorder); doc.setLineWidth(0.5);
-      doc.roundedRect(mX, 50, cW, 42, 5, 5, "FD");
+      doc.setFillColor(...C.pageBg); doc.setDrawColor(...C.softBorder); doc.setLineWidth(0.5); doc.roundedRect(mX, 50, cW, 42, 5, 5, "FD");
       if (imgData) { doc.addImage(imgData, "PNG", (pageW-84)/2, 57, 84, 28, undefined, "FAST"); }
       else {
         doc.setFillColor(230,227,220); doc.roundedRect(mX+4, 52, cW-8, 36, 4, 4, "F");
@@ -608,13 +485,12 @@ export default function NewCalc() {
         doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(60,60,60); doc.text(results.knotName, pageW/2, 76, { align: "center" });
         doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(140,140,140); doc.text("Aperçu disponible dans l'application", pageW/2, 82, { align: "center" });
       }
-      doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...C.muted);
-      doc.text(`Durée de fabrication : ${fmtTime(time)}`, pageW-mX, 89, { align: "right" });
+      doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...C.muted); doc.text(`Durée de fabrication : ${fmtTime(time)}`, pageW-mX, 89, { align: "right" });
       section(98, "Longueurs à couper", C.green);
       autoTable(doc, {
         startY: 111, margin: { left: mX, right: mX }, tableWidth: cW,
         head: [["Ordre", "Couleur", `Longueur (${formData.unit})`, `Équiv. (${equivUnit(formData.unit)})`]],
-        body: currentPalette.map((hex, i) => [i === 0 ? `${i + 1} — départ` : `${i + 1}`, colorNames[i], fmtLen(results.perColor, formData.unit), fmtLen(results.perColor, equivUnit(formData.unit))]),
+        body: currentPalette.map((hex, i) => [i === 0 ? `${i+1} — départ` : `${i+1}`, colorNames[i], fmtLen(results.perColor, formData.unit), fmtLen(results.perColor, equivUnit(formData.unit))]),
         theme: "plain",
         styles: { font:"helvetica", fontSize:10, textColor:C.ink, lineColor:[80,80,80], lineWidth:0.25, cellPadding:{top:6,right:4,bottom:6,left:4}, valign:"middle", halign:"center" },
         headStyles: { fillColor:C.green, textColor:C.ink, fontStyle:"bold", minCellHeight:12 },
@@ -627,15 +503,11 @@ export default function NewCalc() {
       const ameSY = tableEndY + 14;
       let ameY: number;
       if (!hasNoAme) {
-        if (ameY = ameSY+15, ameY+56 > pageH-18) { doc.addPage(); bg(); header(); section(38,"Âme",C.green); ameY=53; }
-        else { section(ameSY,"Âme",C.green); }
+        if (ameY = ameSY+15, ameY+56 > pageH-18) { doc.addPage(); bg(); header(); section(38,"Âme",C.green); ameY=53; } else { section(ameSY,"Âme",C.green); }
         doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(...C.ink);
-        doc.text("Âme(s) : x1", mX, ameY);
-        doc.text(`Longueur : ${fmtLen(results.ame, formData.unit)} chacune`, mX, ameY+6.2);
-        doc.text(`Total âme : ${fmtLen(results.ame, formData.unit)}`, mX, ameY+12.4);
+        doc.text("Âme(s) : x1", mX, ameY); doc.text(`Longueur : ${fmtLen(results.ame, formData.unit)} chacune`, mX, ameY+6.2); doc.text(`Total âme : ${fmtLen(results.ame, formData.unit)}`, mX, ameY+12.4);
         doc.setDrawColor(...C.border); doc.setLineWidth(0.45); doc.line(mX, ameY+20.5, pageW-mX, ameY+20.5);
-        doc.setFillColor(...C.beige); doc.setDrawColor(...C.orange); doc.setLineWidth(0.75);
-        doc.roundedRect(mX, ameY+27, cW, 22, 7, 7, "FD");
+        doc.setFillColor(...C.beige); doc.setDrawColor(...C.orange); doc.setLineWidth(0.75); doc.roundedRect(mX, ameY+27, cW, 22, 7, 7, "FD");
         doc.setFillColor(...C.orange); doc.roundedRect(mX+3.8, ameY+30.2, 3, 15.5, 1.5, 1.5, "F");
         doc.setTextColor(...C.ink); doc.setFont("helvetica","bold"); doc.setFontSize(11.5); doc.text("Vérification terminée", mX+10.5, ameY+38.8);
         doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.setTextColor(...C.muted); doc.text('Consultez la section "Points de vigilance".', mX+10.5, ameY+45.8);
@@ -692,10 +564,8 @@ export default function NewCalc() {
 
   return (
     <div style={{ background: "#EAE3D2", minHeight: "100vh" }} className="newcalc-padding">
-
       {upsellPlan && <UpsellModal planRequired={upsellPlan} onClose={() => setUpsellPlan(null)} />}
       {showEmailPopup && <EmailCaptureModal onClose={() => setShowEmailPopup(false)} />}
-
       {step === 1 && (
         <div className="newcalc-grid">
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -711,12 +581,8 @@ export default function NewCalc() {
                 {ACCESSORIES_CONFIG[formData.type].models.map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
-
             <div style={cardStyle}>
-              <h3 style={{ ...h3Style, display: "flex", alignItems: "center" }}>
-                NIVEAU ET NŒUD
-                <Tooltip text="Le niveau indique la complexité du nœud. Passez votre souris sur chaque bouton pour en savoir plus." />
-              </h3>
+              <h3 style={{ ...h3Style, display: "flex", alignItems: "center" }}>NIVEAU ET NŒUD<Tooltip text="Le niveau indique la complexité du nœud. Passez votre souris sur chaque bouton pour en savoir plus." /></h3>
               <div className="difficulty-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px" }}>
                 {DIFFICULTIES.map((d) => <DifficultyButton key={d} label={d} selected={formData.difficulty === d} onClick={() => handleDifficultyChange(d)} />)}
               </div>
@@ -729,54 +595,29 @@ export default function NewCalc() {
               </select>
               {isHarness && <div style={{ fontSize: "11px", color: "#006D6F", marginTop: "8px" }}>⭐ = nœud recommandé pour les harnais</div>}
             </div>
-
             <div style={cardStyle}>
-              <h3 style={{ ...h3Style, display: "flex", alignItems: "center" }}>
-                PALETTE
-                <Tooltip text="Définissez l'ordre des couleurs : la corde 1 (départ) est celle que vous montez en premier sur la boucle. Pour le Cobra, elle sera la couleur centrale." />
-              </h3>
+              <h3 style={{ ...h3Style, display: "flex", alignItems: "center" }}>PALETTE<Tooltip text="Définissez l'ordre des couleurs : la corde 1 (départ) est celle que vous montez en premier sur la boucle. Pour le Cobra, elle sera la couleur centrale." /></h3>
               <select style={inputStyle} value={formData.colorCount} onChange={(e) => setFormData((p) => ({ ...p, colorCount: Number(e.target.value) }))}>
                 {[1,2,3,4].map((n) => <option key={n} value={n}>{n} couleur(s)</option>)}
               </select>
-              {formData.colorCount > 2 && (
-                <div style={{ fontSize: "11px", color: "#006D6F", background: "#EDF8F5", border: "1px solid #CDE9E1", borderRadius: "8px", padding: "6px 10px", marginTop: "8px" }}>
-                  ℹ️ L'aperçu 3D affiche uniquement les 2 premières couleurs. Les couleurs supplémentaires seront bien utilisées dans votre tressage.
-                </div>
-              )}
+              {formData.colorCount > 2 && (<div style={{ fontSize: "11px", color: "#006D6F", background: "#EDF8F5", border: "1px solid #CDE9E1", borderRadius: "8px", padding: "6px 10px", marginTop: "8px" }}>ℹ️ L'aperçu 3D affiche uniquement les 2 premières couleurs. Les couleurs supplémentaires seront bien utilisées dans votre tressage.</div>)}
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "15px" }}>
-                {currentPalette.map((c, i) => (
-                  <ColorRow key={i} color={c} index={i} isFirst={i === 0} isLast={i === formData.colorCount - 1} onChange={handleColorChange} onMoveUp={handleColorMoveUp} onMoveDown={handleColorMoveDown} />
-                ))}
+                {currentPalette.map((c, i) => (<ColorRow key={i} color={c} index={i} isFirst={i===0} isLast={i===formData.colorCount-1} onChange={handleColorChange} onMoveUp={handleColorMoveUp} onMoveDown={handleColorMoveDown} />))}
               </div>
-              {formData.colorCount > 1 && (
-                <div style={{ fontSize: "11px", color: "#5A5A5A", background: "#F5F3EE", border: "1px solid #E0DAD0", borderRadius: "8px", padding: "6px 10px", marginTop: "10px" }}>
-                  💡 La corde <strong style={{ color: "#006D6F" }}>1 — départ</strong> est celle que vous montez en premier sur votre boucle ou clip. Pour un Cobra, elle détermine la couleur centrale du nœud.
-                </div>
-              )}
+              {formData.colorCount > 1 && (<div style={{ fontSize: "11px", color: "#5A5A5A", background: "#F5F3EE", border: "1px solid #E0DAD0", borderRadius: "8px", padding: "6px 10px", marginTop: "10px" }}>💡 La corde <strong style={{ color: "#006D6F" }}>1 — départ</strong> est celle que vous montez en premier sur votre boucle ou clip. Pour un Cobra, elle détermine la couleur centrale du nœud.</div>)}
             </div>
           </div>
-
           <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             <div style={cardStyle}>
               <h3 style={h3Style}>APERÇU</h3>
               <h4 style={{ color: "#006D6F", textAlign: "center", marginBottom: "5px", fontWeight: "bold" }}>{results.knotName.toUpperCase()}</h4>
               <div style={{ fontSize: "14px", color: "#8C8C8C", textAlign: "center", marginBottom: "8px" }}>Durée approximative : {results.estimatedTime}</div>
-              {(results.isHarnessEstimated || !results.calibrated) && (
-                <div style={{ fontSize: "11px", color: "#B8860B", background: "#FFF8E1", border: "1px solid #FFD700", borderRadius: "8px", padding: "5px 10px", textAlign: "center", marginBottom: "10px" }}>
-                  ⚠️ Longueurs estimées — pas encore vérifiées sur échantillon réel
-                </div>
-              )}
-              {currentGuide && (
-                <a href={currentGuide.url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: "8px", background: "#FFF8F0", border: "1px solid #F0C080", borderRadius: "10px", padding: "8px 12px", marginBottom: "10px", textDecoration: "none", color: "#8B5A00", fontSize: "12px", fontWeight: 600 }}>
-                  <span style={{ fontSize: "16px" }}>📖</span>
-                  <span>Guide disponible sur Etsy → {currentGuide.title}</span>
-                </a>
-              )}
+              {(results.isHarnessEstimated || !results.calibrated) && (<div style={{ fontSize: "11px", color: "#B8860B", background: "#FFF8E1", border: "1px solid #FFD700", borderRadius: "8px", padding: "5px 10px", textAlign: "center", marginBottom: "10px" }}>⚠️ Longueurs estimées — pas encore vérifiées sur échantillon réel</div>)}
+              {currentGuide && (<a href={currentGuide.url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: "8px", background: "#FFF8F0", border: "1px solid #F0C080", borderRadius: "10px", padding: "8px 12px", marginBottom: "10px", textDecoration: "none", color: "#8B5A00", fontSize: "12px", fontWeight: 600 }}><span style={{ fontSize: "16px" }}>📖</span><span>Guide disponible sur Etsy → {currentGuide.title}</span></a>)}
               <div style={previewBox} className="knot-preview-wrap">
                 <KnotComponent ref={knotRef} color1={formData.colors[0]} color2={formData.colors[1]} accessoryType={formData.type} orientation="horizontal" />
               </div>
             </div>
-
             <div style={cardStyle}>
               <div style={{ fontSize: "10px", fontWeight: "900", color: "#006D6F", marginBottom: "5px" }}>PARAMÈTRES</div>
               <h2 style={{ fontSize: "24px", fontWeight: "900", marginBottom: "20px" }}>Réglages finaux</h2>
@@ -784,9 +625,7 @@ export default function NewCalc() {
                 <div>
                   <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>Taille du chien<Tooltip text="Sélectionnez la taille pour pré-remplir le tour de poitrail, puis affinez la mesure exacte en cm si besoin." /></label>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "8px", marginBottom: "12px" }}>
-                    {HARNESS_SIZES.map((s) => (
-                      <div key={s.value} onClick={() => handleHarnessSizeChange(s.value)} style={{ padding: "10px 4px", borderRadius: "10px", textAlign: "center", cursor: "pointer", fontWeight: "bold", fontSize: "14px", background: formData.harnessSize === s.value ? "#006D6F" : "#fff", color: formData.harnessSize === s.value ? "#fff" : "#333", border: formData.harnessSize === s.value ? "none" : "1px solid #EAEAEA" }}>{s.value}</div>
-                    ))}
+                    {HARNESS_SIZES.map((s) => (<div key={s.value} onClick={() => handleHarnessSizeChange(s.value)} style={{ padding: "10px 4px", borderRadius: "10px", textAlign: "center", cursor: "pointer", fontWeight: "bold", fontSize: "14px", background: formData.harnessSize === s.value ? "#006D6F" : "#fff", color: formData.harnessSize === s.value ? "#fff" : "#333", border: formData.harnessSize === s.value ? "none" : "1px solid #EAEAEA" }}>{s.value}</div>))}
                   </div>
                   <div style={{ marginBottom: "10px" }}>
                     <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>Tour de poitrail exact (cm)<Tooltip text="Mesurez le tour de poitrail de votre chien avec un mètre ruban et saisissez la valeur exacte. Ajoutez 2-3 cm pour l'aisance." /></label>
@@ -796,63 +635,36 @@ export default function NewCalc() {
                 </div>
               ) : (
                 <div className="params-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
-                  <div>
-                    <label style={labelStyle}>Longueur ({formData.unit})</label>
-                    <input type="number" step={formData.unit==="m"?"0.01":formData.unit==="in"?"0.1":"1"} value={formData.length} onChange={(e) => setFormData((p) => ({ ...p, length: Number(e.target.value) }))} style={inputStyle} />
-                  </div>
-                  <div>
-                    <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>Arrondi<Tooltip text="Les longueurs calculées sont arrondies au multiple de 10 supérieur. Ex : 343 cm avec un arrondi à 10 cm devient 350 cm." /></label>
-                    <select style={inputStyle} value={formData.roundingValue} onChange={(e) => setFormData((p) => ({ ...p, roundingValue: Number(e.target.value) }))}>
-                      {(formData.unit==="cm"?[5,10,25,50]:formData.unit==="m"?[0.05,0.1,0.25,0.5]:[2,4,10,20]).map((v) => <option key={v} value={v}>{v} {formData.unit}</option>)}
-                    </select>
-                  </div>
+                  <div><label style={labelStyle}>Longueur ({formData.unit})</label><input type="number" step={formData.unit==="m"?"0.01":formData.unit==="in"?"0.1":"1"} value={formData.length} onChange={(e) => setFormData((p) => ({ ...p, length: Number(e.target.value) }))} style={inputStyle} /></div>
+                  <div><label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>Arrondi<Tooltip text="Les longueurs calculées sont arrondies au multiple de 10 supérieur. Ex : 343 cm avec un arrondi à 10 cm devient 350 cm." /></label><select style={inputStyle} value={formData.roundingValue} onChange={(e) => setFormData((p) => ({ ...p, roundingValue: Number(e.target.value) }))}>{(formData.unit==="cm"?[5,10,25,50]:formData.unit==="m"?[0.05,0.1,0.25,0.5]:[2,4,10,20]).map((v) => <option key={v} value={v}>{v} {formData.unit}</option>)}</select></div>
                 </div>
               )}
-              {!isHarness && (
-                <div style={{ marginTop: "15px" }}>
-                  <label style={labelStyle}>Unité</label>
-                  <select style={inputStyle} value={formData.unit} onChange={(e) => handleUnitChange(e.target.value as LengthUnit)}>
-                    {UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
-                  </select>
-                </div>
-              )}
+              {!isHarness && (<div style={{ marginTop: "15px" }}><label style={labelStyle}>Unité</label><select style={inputStyle} value={formData.unit} onChange={(e) => handleUnitChange(e.target.value as LengthUnit)}>{UNIT_OPTIONS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}</select></div>)}
               <div style={{ marginTop: "15px" }}>
                 <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>Épaisseur corde<Tooltip text="La paracorde 3mm consomme environ 15% moins de corde que la 4mm pour le même nœud." /></label>
-                <select style={inputStyle} value={formData.ropeSize} onChange={(e) => setFormData((p) => ({ ...p, ropeSize: e.target.value as RopeSize }))}>
-                  <option value="4mm">4 mm (standard)</option>
-                  <option value="3mm">3 mm (fine)</option>
-                </select>
+                <select style={inputStyle} value={formData.ropeSize} onChange={(e) => setFormData((p) => ({ ...p, ropeSize: e.target.value as RopeSize }))}><option value="4mm">4 mm (standard)</option><option value="3mm">3 mm (fine)</option></select>
               </div>
             </div>
           </div>
-
           <div style={{ ...cardStyle, gridColumn: "1 / -1" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
               <div>
-                <div style={{ fontSize: "12px", fontWeight: 900, color: "#1A1A1A", marginBottom: "6px", display: "flex", alignItems: "center" }}>
-                  Mode sécurisé ({formData.secureMode ? "10%" : "0%"})<Tooltip text="Ajoute 10% de corde en plus pour compenser les variations de tension selon votre façon de tresser. Recommandé pour les débutantes." />
-                </div>
+                <div style={{ fontSize: "12px", fontWeight: 900, color: "#1A1A1A", marginBottom: "6px", display: "flex", alignItems: "center" }}>Mode sécurisé ({formData.secureMode ? "10%" : "0%"})<Tooltip text="Ajoute 10% de corde en plus pour compenser les variations de tension selon votre façon de tresser. Recommandé pour les débutantes." /></div>
                 <div style={{ fontSize: "12px", color: "#8C8C8C", marginBottom: "8px" }}>Marge de sécurité incluse.</div>
               </div>
               <input type="checkbox" checked={formData.secureMode} onChange={(e) => setFormData((p) => ({ ...p, secureMode: e.target.checked }))} style={{ width: 16, height: 16, accentColor: "#35A5D3", marginTop: "2px" }} />
             </div>
             <div style={{ fontSize: "12px", fontWeight: 800, color: "#1A1A1A", marginBottom: "8px" }}>{formData.secureMode ? "Sécurité maximale (10%)" : "Sécurité standard (0%)"}</div>
-            <div style={{ height: "8px", background: "#E9E9E9", borderRadius: "999px", overflow: "hidden", marginBottom: "20px" }}>
-              <div style={{ width: formData.secureMode ? "78%" : "42%", height: "100%", background: "#0A7A78", borderRadius: "999px" }} />
-            </div>
+            <div style={{ height: "8px", background: "#E9E9E9", borderRadius: "999px", overflow: "hidden", marginBottom: "20px" }}><div style={{ width: formData.secureMode ? "78%" : "42%", height: "100%", background: "#0A7A78", borderRadius: "999px" }} /></div>
             <div style={{ display: "flex", gap: "10px" }}>
               <button onClick={handleCalculateAndSave} style={{ ...mainBtn, flex: 2 }}>Calculer et enregistrer</button>
               <button onClick={handleReset} style={{ ...secBtn, flex: 1 }}>Réinitialiser</button>
             </div>
-            <div style={{ fontSize: "12px", color: "#888", marginTop: "10px", display: "flex", alignItems: "flex-start", gap: "5px" }}>
-              <span>💡</span>
-              <span>Calcule les longueurs et enregistre automatiquement dans Dashboard, Projets et Historique.</span>
-            </div>
+            <div style={{ fontSize: "12px", color: "#888", marginTop: "10px", display: "flex", alignItems: "flex-start", gap: "5px" }}><span>💡</span><span>Calcule les longueurs et enregistre automatiquement dans Dashboard, Projets et Historique.</span></div>
             {saveMessage && <div style={saveInfoStyle}>{saveMessage}</div>}
           </div>
         </div>
       )}
-
       {step === 2 && (
         <div style={{ background: "#EAE3D2", minHeight: "100vh" }}>
           <div style={{ maxWidth: "850px", margin: "0 auto", background: "#fff", borderRadius: "30px", padding: "40px", boxShadow: "0 10px 30px rgba(0,0,0,0.05)" }}>
@@ -878,33 +690,18 @@ export default function NewCalc() {
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #F0F0F0" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                       <div style={{ width: 12, height: 12, borderRadius: "50%", background: hex, border: "1px solid #ddd", flexShrink: 0 }} />
-                      <span>
-                        Corde {i + 1}
-                        {i === 0 && <span style={{ marginLeft: "8px", fontSize: "10px", color: "#006D6F", fontWeight: 700, background: "#EDF8F5", border: "1px solid #CDE9E1", borderRadius: "5px", padding: "1px 5px" }}>départ</span>}
-                        <span style={{ marginLeft: "6px", fontSize: "11px", color: "#999" }}>{colorName}</span>
-                      </span>
+                      <span>Corde {i+1}{i===0 && <span style={{ marginLeft: "8px", fontSize: "10px", color: "#006D6F", fontWeight: 700, background: "#EDF8F5", border: "1px solid #CDE9E1", borderRadius: "5px", padding: "1px 5px" }}>départ</span>}<span style={{ marginLeft: "6px", fontSize: "11px", color: "#999" }}>{colorName}</span></span>
                     </div>
                     <span style={{ fontWeight: "bold" }}>{fmtLen(results.perColor, formData.unit)}</span>
                   </div>
                 );
               })}
-              {!hasNoAme && (
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0" }}>
-                  <span>Âme structurelle</span>
-                  <span style={{ fontWeight: "bold" }}>{fmtLen(results.ame, formData.unit)}</span>
-                </div>
-              )}
+              {!hasNoAme && (<div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0" }}><span>Âme structurelle</span><span style={{ fontWeight: "bold" }}>{fmtLen(results.ame, formData.unit)}</span></div>)}
             </div>
             <div className="params-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "30px" }}>
-              <div style={{ background: "#006D6F", color: "#fff", padding: "20px", borderRadius: "20px" }}>
-                <div style={{ fontSize: "11px", opacity: 0.8 }}>TOTAL GÉNÉRAL</div>
-                <div style={{ fontSize: "28px", fontWeight: "900" }}>{fmtLen(results.totalGeneral, formData.unit)}</div>
-              </div>
+              <div style={{ background: "#006D6F", color: "#fff", padding: "20px", borderRadius: "20px" }}><div style={{ fontSize: "11px", opacity: 0.8 }}>TOTAL GÉNÉRAL</div><div style={{ fontSize: "28px", fontWeight: "900" }}>{fmtLen(results.totalGeneral, formData.unit)}</div></div>
               <div style={{ background: "#1A1A1A", color: "#fff", padding: "20px", borderRadius: "20px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
-                  <span style={{ fontSize: "11px", opacity: 0.8 }}>CHRONO RÉEL</span>
-                  <span style={{ fontSize: "9px", background: "rgba(255,255,255,0.15)", color: "#bbb", padding: "2px 6px", borderRadius: "6px", cursor: "help" }} title="Chronométrez votre tressage pour connaître votre temps réel par projet. Indispensable pour fixer un prix de vente juste : temps × tarif horaire = coût de fabrication.">? À quoi ça sert</span>
-                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}><span style={{ fontSize: "11px", opacity: 0.8 }}>CHRONO RÉEL</span><span style={{ fontSize: "9px", background: "rgba(255,255,255,0.15)", color: "#bbb", padding: "2px 6px", borderRadius: "6px", cursor: "help" }} title="Chronométrez votre tressage pour connaître votre temps réel par projet. Indispensable pour fixer un prix de vente juste : temps × tarif horaire = coût de fabrication.">? À quoi ça sert</span></div>
                 <div style={{ fontSize: "28px", fontWeight: "900" }}>{fmtTime(time)}</div>
               </div>
             </div>
@@ -912,9 +709,7 @@ export default function NewCalc() {
               <button onClick={() => setIsPaused((p) => !p)} style={{ ...mainBtn, width: "100%", padding: "15px" }}>{isPaused ? "▶ Démarrer le chrono" : "⏸ Pause"}</button>
               <button onClick={() => setStep(1)} style={{ ...secBtn, width: "100%", marginTop: 0 }}>Retour</button>
             </div>
-            <div style={{ fontSize: "12px", color: "#888", marginTop: "10px", textAlign: "center" }}>
-              Lancez le chrono dès que vous commencez à tresser, mettez en pause si vous vous arrêtez. À la fin, vous saurez exactement combien de temps ce projet vous a pris — et combien le facturer.
-            </div>
+            <div style={{ fontSize: "12px", color: "#888", marginTop: "10px", textAlign: "center" }}>Lancez le chrono dès que vous commencez à tresser, mettez en pause si vous vous arrêtez. À la fin, vous saurez exactement combien de temps ce projet vous a pris — et combien le facturer.</div>
           </div>
         </div>
       )}
