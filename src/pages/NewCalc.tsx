@@ -107,7 +107,7 @@ const KNOTS_REGISTRY = [
   { id: "Fishtail",     name: "Fishtail",     difficulty: "Débutant",      component: FishtailPreview,     factor: 18, order: 2, is3D: true, baseMinutes: 55,  calibrated: true  },
   { id: "LadderRack",   name: "Ladder Rack",  difficulty: "Débutant",      component: LadderRackPreview,   factor: 20, order: 3, is3D: true, baseMinutes: 50,  calibrated: false },
   { id: "SnakeKnot",    name: "Snake Knot",   difficulty: "Débutant",      component: SnakeKnotPreview,    factor: 14, order: 4, is3D: true, baseMinutes: 35,  calibrated: false },
-  { id: "Spiral",       name: "Spiral",       difficulty: "Débutant",      component: SpiralPreview,       factor: 6,  order: 5, is3D: true, baseMinutes: 40,  calibrated: true },
+  { id: "Spiral",       name: "Spiral",       difficulty: "Débutant",      component: SpiralPreview,       factor: 6,  order: 5, is3D: true, baseMinutes: 40,  calibrated: true  },
   { id: "Trilobite",    name: "Trilobite",    difficulty: "Intermédiaire", component: TrilobitePreview,    factor: 24, order: 1, is3D: true, baseMinutes: 70,  calibrated: false },
   { id: "CrownSinnet",  name: "Crown Sinnet", difficulty: "Intermédiaire", component: CrownSinnetPreview,  factor: 16, order: 2, is3D: true, baseMinutes: 60,  calibrated: false },
   { id: "TressageRond", name: "Tressage Rond",difficulty: "Intermédiaire", component: TressageRondPreview, factor: 14, order: 3, is3D: true, baseMinutes: 55,  calibrated: true  },
@@ -200,7 +200,8 @@ type FormData = {
   name: string; type: AccessoryKey; model: string; difficulty: string; nodeId: string;
   length: number; unit: LengthUnit; colorCount: number; roundingValue: number;
   secureMode: boolean; colors: string[]; colorOrder: number[]; ropeSize: RopeSize;
-  harnessSize: HarnessSize; harnessCustomLength: number;
+  harnessSize: HarnessSize;
+  harnessCou: number; harnessPoitrail: number; harnessDos: number;
 };
 
 type StoredProject = {
@@ -326,7 +327,8 @@ const INITIAL_FORM: FormData = {
   colorCount: 2, roundingValue: 10, secureMode: true,
   colors: [COLORS_DATABASE[5].hex, COLORS_DATABASE[0].hex, COLORS_DATABASE[2].hex, COLORS_DATABASE[1].hex],
   colorOrder: [0, 1, 2, 3],
-  ropeSize: "4mm", harnessSize: "M", harnessCustomLength: 58,
+  ropeSize: "4mm", harnessSize: "M",
+  harnessCou: 28, harnessPoitrail: 36, harnessDos: 10,
 };
 
 export default function NewCalc() {
@@ -350,11 +352,32 @@ export default function NewCalc() {
   }, [isPaused]);
 
   const effectiveLength = useMemo(() => {
-    if (formData.type === "HARNAIS") return Math.max(1, formData.harnessCustomLength);
+    if (formData.type === "HARNAIS") return Math.max(1, formData.harnessPoitrail);
     return toCm(formData.length, formData.unit);
-  }, [formData.type, formData.harnessCustomLength, formData.length, formData.unit]);
+  }, [formData.type, formData.harnessPoitrail, formData.length, formData.unit]);
 
   const knot     = useMemo(() => KNOTS_REGISTRY.find((k) => k.id === formData.nodeId) ?? KNOTS_REGISTRY[0], [formData.nodeId]);
+  // ─── Calcul spécifique harnais (3 bandes) ────────────────────────────────────
+  const harnessResults = useMemo(() => {
+    if (formData.type !== "HARNAIS") return null;
+    const margin = formData.secureMode ? 1.1 : 1.0;
+    const ropeFactor = formData.ropeSize === "3mm" ? 0.85 : 1.0;
+    // Longueurs de montage selon guide : cou et poitrail = mesure - 7 cm, dos = mesure exacte
+    const montCou      = Math.max(1, formData.harnessCou - 7);
+    const montPoitrail = Math.max(1, formData.harnessPoitrail - 7);
+    const montDos      = Math.max(1, formData.harnessDos);
+    // Facteur Cobra harnais : 9 cm de corde par cm de bande × 2 brins + 10 cm marge
+    const calc = (montage: number) => Math.ceil((montage * 9 * 2 + 10) * ropeFactor * margin);
+    return {
+      cou:      calc(montCou),
+      poitrail: calc(montPoitrail),
+      dos:      calc(montDos),
+      montCou, montPoitrail, montDos,
+      total:    calc(montCou) + calc(montPoitrail) + calc(montDos),
+    };
+  }, [formData.type, formData.harnessCou, formData.harnessPoitrail, formData.harnessDos, formData.secureMode, formData.ropeSize]);
+
+
   const hasNoAme = KNOTS_WITHOUT_AME.includes(formData.nodeId);
 
   const results = useMemo(() => {
@@ -400,7 +423,16 @@ export default function NewCalc() {
   const handleUnitChange = useCallback((nextUnit: LengthUnit) => {
     setFormData((prev) => { const lCm=toCm(prev.length,prev.unit); const rCm=toCm(prev.roundingValue,prev.unit); return { ...prev, unit: nextUnit, length: roundDisp(fromCm(lCm,nextUnit),nextUnit), roundingValue: roundDisp(fromCm(rCm,nextUnit),nextUnit) }; });
   }, []);
-  const handleHarnessSizeChange = useCallback((size: HarnessSize) => { const s=HARNESS_SIZES.find(h=>h.value===size); setFormData((prev) => ({ ...prev, harnessSize: size, harnessCustomLength: s ? s.lengthCm : prev.harnessCustomLength })); }, []);
+  const handleHarnessSizeChange = useCallback((size: HarnessSize) => {
+    const s = HARNESS_SIZES.find(h => h.value === size);
+    if (!s) return;
+    setFormData((prev) => ({
+      ...prev, harnessSize: size,
+      harnessCou: Math.round(s.lengthCm * 0.75),
+      harnessPoitrail: s.lengthCm,
+      harnessDos: Math.round(s.lengthCm * 0.28),
+    }));
+  }, []);
 
   const saveProject = useCallback((): StoredProject => {
     const now = new Date().toISOString();
@@ -456,7 +488,7 @@ export default function NewCalc() {
       doc.setTextColor(...C.ink); doc.setFont("helvetica","bold"); doc.setFontSize(22); doc.text("CordesLab", mX, 16);
       doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(...C.muted);
       doc.text(`Date : ${pdfDate}`, pageW-mX, 16, { align: "right" });
-      doc.text(`Produit : ${ACCESSORIES_CONFIG[formData.type].label}${formData.type === "HARNAIS" ? ` · Taille ${formData.harnessSize} · ${formData.harnessCustomLength} cm` : ""}`, mX, 22);
+      doc.text(`Produit : ${ACCESSORIES_CONFIG[formData.type].label}${formData.type === "HARNAIS" ? ` · Taille ${formData.harnessSize} · ${formData.harnessPoitrail} cm (poitrail)` : ""}`, mX, 22);
       doc.setFont("helvetica","bold"); doc.setFontSize(12.5); doc.setTextColor(...C.ink);
       doc.text(`Projet ${formData.name}`, mX, 27);
       doc.setDrawColor(...C.border); doc.setLineWidth(0.7); doc.line(mX, 33.5, pageW-mX, 33.5);
@@ -519,13 +551,13 @@ export default function NewCalc() {
       accentCard(mX, sumY, cW, sumH, C.green);
       const lX=mX+10; let sY=62;
       doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(...C.ink);
-      doc.text(`Produit : ${ACCESSORIES_CONFIG[formData.type].label}${formData.type === "HARNAIS" ? ` · Taille ${formData.harnessSize} · ${formData.harnessCustomLength} cm` : ""}`, lX, sY);
+      doc.text(`Produit : ${ACCESSORIES_CONFIG[formData.type].label}${formData.type === "HARNAIS" ? ` · Taille ${formData.harnessSize} · Cou ${formData.harnessCou}cm / Poitrail ${formData.harnessPoitrail}cm / Dos ${formData.harnessDos}cm` : ""}`, lX, sY);
       doc.text(`${formData.colorCount} couleurs`, mX+128, sY);
       doc.setFillColor(...C.green); doc.roundedRect(pageW-mX-28, 58.2, 22, 6.8, 2.4, 2.4, "F");
       doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(...C.white); doc.text("estimé", pageW-mX-17, 62.8, { align:"center" });
       sY+=9.5;
       doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(...C.ink);
-      doc.text(`Nœud : ${results.knotName} · ${formData.type === "HARNAIS" ? `Tour poitrail : ${formData.harnessCustomLength} cm` : `Longueur : ${formData.length} ${formData.unit}`} · Ø ${formData.ropeSize}`, lX, sY);
+      doc.text(`Nœud : ${results.knotName} · ${formData.type === "HARNAIS" ? `Cou: ${formData.harnessCou}cm · Poitrail: ${formData.harnessPoitrail}cm · Dos: ${formData.harnessDos}cm` : `Longueur : ${formData.length} ${formData.unit}`} · Ø ${formData.ropeSize}`, lX, sY);
       doc.text(`Arrondi : ${formData.roundingValue} ${formData.unit} · Unité : ${formData.unit}`, mX+128, sY);
       sY+=11;
       colorNames.forEach((n,i) => doc.text(`${i+1}. ${n}${i === 0 ? " (départ)" : ""}`, lX, sY+i*6));
@@ -560,7 +592,7 @@ export default function NewCalc() {
 
   const KnotComponent = knot.component as any;
   const isHarness = formData.type === "HARNAIS";
-  const currentHarnessSize = HARNESS_SIZES.find(s => s.value === formData.harnessSize)!;
+
 
   return (
     <div style={{ background: "#EAE3D2", minHeight: "100vh" }} className="newcalc-padding">
@@ -623,15 +655,39 @@ export default function NewCalc() {
               <h2 style={{ fontSize: "24px", fontWeight: "900", marginBottom: "20px" }}>Réglages finaux</h2>
               {isHarness ? (
                 <div>
-                  <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>Taille du chien<Tooltip text="Sélectionnez la taille pour pré-remplir le tour de poitrail, puis affinez la mesure exacte en cm si besoin." /></label>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "8px", marginBottom: "12px" }}>
+                  <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>
+                    Taille de référence
+                    <Tooltip text="Sélectionnez la taille pour pré-remplir les mesures, puis ajustez selon les mesures réelles de votre chien." />
+                  </label>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "8px", marginBottom: "14px" }}>
                     {HARNESS_SIZES.map((s) => (<div key={s.value} onClick={() => handleHarnessSizeChange(s.value)} style={{ padding: "10px 4px", borderRadius: "10px", textAlign: "center", cursor: "pointer", fontWeight: "bold", fontSize: "14px", background: formData.harnessSize === s.value ? "#006D6F" : "#fff", color: formData.harnessSize === s.value ? "#fff" : "#333", border: formData.harnessSize === s.value ? "none" : "1px solid #EAEAEA" }}>{s.value}</div>))}
                   </div>
-                  <div style={{ marginBottom: "10px" }}>
-                    <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>Tour de poitrail exact (cm)<Tooltip text="Mesurez le tour de poitrail de votre chien avec un mètre ruban et saisissez la valeur exacte. Ajoutez 2-3 cm pour l'aisance." /></label>
-                    <input type="number" min={10} max={200} step={1} value={formData.harnessCustomLength} onChange={(e) => setFormData((p) => ({ ...p, harnessCustomLength: Math.max(1, Number(e.target.value)) }))} style={inputStyle} />
+                  <div style={{ fontSize: "11px", color: "#006D6F", background: "#EDF8F5", border: "1px solid #CDE9E1", borderRadius: "8px", padding: "6px 10px", marginBottom: "14px" }}>
+                    ℹ️ Mesurez votre chien debout avec un mètre souple. Glissez 2 doigts sous le mètre pour l'aisance.
                   </div>
-                  <div style={{ fontSize: "12px", color: "#888", background: "#F9F9F9", borderRadius: "10px", padding: "8px 12px" }}>Référence taille <strong>{formData.harnessSize}</strong> : {currentHarnessSize.poitrail}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <div>
+                      <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>
+                        Cou (cm)
+                        <Tooltip text="Tour de cou à mi-hauteur + 2 doigts d'aisance. XS : 25–35 cm." />
+                      </label>
+                      <input type="number" min={10} max={80} step={1} value={formData.harnessCou} onChange={(e) => setFormData((p) => ({ ...p, harnessCou: Math.max(1, Number(e.target.value)) }))} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>
+                        Poitrail (cm)
+                        <Tooltip text="Tour de poitrail juste derrière les pattes avant + 2 doigts d'aisance. XS : 30–42 cm." />
+                      </label>
+                      <input type="number" min={10} max={120} step={1} value={formData.harnessPoitrail} onChange={(e) => setFormData((p) => ({ ...p, harnessPoitrail: Math.max(1, Number(e.target.value)) }))} style={inputStyle} />
+                    </div>
+                    <div>
+                      <label style={{ ...labelStyle, display: "flex", alignItems: "center" }}>
+                        Dos (cm)
+                        <Tooltip text="Distance sur le dos entre la bande cou et la bande poitrail. XS : 7–13 cm." />
+                      </label>
+                      <input type="number" min={3} max={40} step={1} value={formData.harnessDos} onChange={(e) => setFormData((p) => ({ ...p, harnessDos: Math.max(1, Number(e.target.value)) }))} style={inputStyle} />
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="params-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
@@ -696,10 +752,30 @@ export default function NewCalc() {
                   </div>
                 );
               })}
-              {!hasNoAme && (<div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0" }}><span>Âme structurelle</span><span style={{ fontWeight: "bold" }}>{fmtLen(results.ame, formData.unit)}</span></div>)}
+              {!hasNoAme && !isHarness && (<div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0" }}><span>Âme structurelle</span><span style={{ fontWeight: "bold" }}>{fmtLen(results.ame, formData.unit)}</span></div>)}
+              {isHarness && harnessResults && (
+                <>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#006D6F", padding: "8px 0 4px 0", borderBottom: "2px solid #006D6F", marginBottom: "4px" }}>Détail par bande</div>
+                  {[
+                    { label: "Bande Cou", montage: harnessResults.montCou, corde: harnessResults.cou },
+                    { label: "Bande Poitrail", montage: harnessResults.montPoitrail, corde: harnessResults.poitrail },
+                    { label: "Bande Dos", montage: harnessResults.montDos, corde: harnessResults.dos },
+                  ].map((b, i) => (
+                    <div key={i} style={{ padding: "10px 0", borderBottom: "1px solid #F0F0F0" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                          <span style={{ fontWeight: 700, fontSize: "13px" }}>{b.label}</span>
+                          <span style={{ marginLeft: "8px", fontSize: "11px", color: "#999" }}>montage : {b.montage} cm</span>
+                        </div>
+                        <span style={{ fontWeight: "bold" }}>{b.corde} cm</span>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
             <div className="params-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "30px" }}>
-              <div style={{ background: "#006D6F", color: "#fff", padding: "20px", borderRadius: "20px" }}><div style={{ fontSize: "11px", opacity: 0.8 }}>TOTAL GÉNÉRAL</div><div style={{ fontSize: "28px", fontWeight: "900" }}>{fmtLen(results.totalGeneral, formData.unit)}</div></div>
+              <div style={{ background: "#006D6F", color: "#fff", padding: "20px", borderRadius: "20px" }}><div style={{ fontSize: "11px", opacity: 0.8 }}>TOTAL GÉNÉRAL</div><div style={{ fontSize: "28px", fontWeight: "900" }}>{isHarness && harnessResults ? `${harnessResults.total} cm` : fmtLen(results.totalGeneral, formData.unit)}</div></div>
               <div style={{ background: "#1A1A1A", color: "#fff", padding: "20px", borderRadius: "20px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}><span style={{ fontSize: "11px", opacity: 0.8 }}>CHRONO RÉEL</span><span style={{ fontSize: "9px", background: "rgba(255,255,255,0.15)", color: "#bbb", padding: "2px 6px", borderRadius: "6px", cursor: "help" }} title="Chronométrez votre tressage pour connaître votre temps réel par projet. Indispensable pour fixer un prix de vente juste : temps × tarif horaire = coût de fabrication.">? À quoi ça sert</span></div>
                 <div style={{ fontSize: "28px", fontWeight: "900" }}>{fmtTime(time)}</div>
