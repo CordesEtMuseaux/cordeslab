@@ -367,7 +367,7 @@ export default function NewCalc() {
     const estMin     = getEstMin(knot.baseMinutes, lengthCm, formData.type, formData.model);
     const isHarnessEstimated = formData.type === "HARNAIS" || formData.type === "JOUETS";
     const totalBrins = perColor * formData.colorCount;
-    const ame = hasNoAme ? 0 : lengthCm;
+    const ame = hasNoAme ? 0 : lengthCm * 2;
     const isTressageRondCalibrated = formData.nodeId === "TressageRond" && formData.colorCount <= 3;
     return {
       perColor, ame, estimatedMinutes: estMin, estimatedTime: fmtDur(estMin),
