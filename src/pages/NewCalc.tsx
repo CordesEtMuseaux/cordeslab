@@ -107,7 +107,7 @@ const KNOTS_REGISTRY = [
   { id: "Fishtail",     name: "Fishtail",     difficulty: "Débutant",      component: FishtailPreview,     factor: 18, order: 2, is3D: true, baseMinutes: 55,  calibrated: true  },
   { id: "LadderRack",   name: "Ladder Rack",  difficulty: "Débutant",      component: LadderRackPreview,   factor: 20, order: 3, is3D: true, baseMinutes: 50,  calibrated: false },
   { id: "SnakeKnot",    name: "Snake Knot",   difficulty: "Débutant",      component: SnakeKnotPreview,    factor: 14, order: 4, is3D: true, baseMinutes: 35,  calibrated: false },
-  { id: "Spiral",       name: "Spiral",       difficulty: "Débutant",      component: SpiralPreview,       factor: 16, order: 5, is3D: true, baseMinutes: 40,  calibrated: false },
+  { id: "Spiral",       name: "Spiral",       difficulty: "Débutant",      component: SpiralPreview,       factor: 6,  order: 5, is3D: true, baseMinutes: 40,  calibrated: true },
   { id: "Trilobite",    name: "Trilobite",    difficulty: "Intermédiaire", component: TrilobitePreview,    factor: 24, order: 1, is3D: true, baseMinutes: 70,  calibrated: false },
   { id: "CrownSinnet",  name: "Crown Sinnet", difficulty: "Intermédiaire", component: CrownSinnetPreview,  factor: 16, order: 2, is3D: true, baseMinutes: 60,  calibrated: false },
   { id: "TressageRond", name: "Tressage Rond",difficulty: "Intermédiaire", component: TressageRondPreview, factor: 14, order: 3, is3D: true, baseMinutes: 55,  calibrated: true  },
@@ -367,7 +367,7 @@ export default function NewCalc() {
     const estMin     = getEstMin(knot.baseMinutes, lengthCm, formData.type, formData.model);
     const isHarnessEstimated = formData.type === "HARNAIS" || formData.type === "JOUETS";
     const totalBrins = perColor * formData.colorCount;
-    const ame = hasNoAme ? 0 : lengthCm * 2;
+    const ame = hasNoAme ? 0 : (formData.nodeId === "Spiral" ? lengthCm * 2.5 : lengthCm * 2);
     const isTressageRondCalibrated = formData.nodeId === "TressageRond" && formData.colorCount <= 3;
     return {
       perColor, ame, estimatedMinutes: estMin, estimatedTime: fmtDur(estMin),
