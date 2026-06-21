@@ -70,12 +70,12 @@ const ACCESSORIES_CONFIG = {
 const UPSELL_CONTENT: Record<string, { title: string; body: string; cta: string }> = {
   Creator: {
     title: "Cette fonctionnalité est réservée au plan Creator",
-    body: "Débloquez les calculs Poignées, l'Export PDF et 12 nœuds sélectionnés pour 9€/mois.",
+    body: "Débloquez les calculs Poignées, l'Export PDF et 12 nœuds sélectionnés pour 17€/mois.",
     cta: "Passer à Creator →",
   },
   Pro: {
     title: "Cette fonctionnalité est réservée au plan Pro",
-    body: "Débloquez les calculs Laisses, Harnais, Jouets et tous les nœuds pour 19€/mois.",
+    body: "Débloquez les calculs Laisses, Harnais, Jouets et tous les nœuds pour 29€/mois.",
     cta: "Passer à Pro →",
   },
 };
