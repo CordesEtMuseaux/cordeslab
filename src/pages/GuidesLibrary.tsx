@@ -35,7 +35,7 @@ export default function GuidesLibrary() {
           Bibliothèque de guides
         </h1>
         <p style={{ color: THEME.colors.textMuted, marginBottom: "20px" }}>
-          Un guide complet et autonome par combinaison nœud × accessoire — mesures, matériel, étapes de nouage, montage, finition.
+          Un guide complet et autonome par combinaison nœud × accessoire — matériel, étapes de nouage, montage, finition.
         </p>
 
         <div style={{
