@@ -8,16 +8,18 @@ import FishtailPreview from "../components/Debutant/FishtailPreview";
 import LadderRackPreview from "../components/Debutant/LadderRackPreview";
 import SnakeKnotPreview from "../components/Debutant/SnakeKnotPreview";
 import SpiralPreview from "../components/Debutant/SpiralPreview";
+import SquareKnotPreview from "../components/Debutant/SquareKnotPreview";
 import TrilobitePreview from "../components/Intermediaire/TrilobitePreview";
 import CrownSinnetPreview from "../components/Intermediaire/CrownSinnetPreview";
 import TressageRondPreview from "../components/Intermediaire/TressageRondPreview";
 import ViperWeavePreview from "../components/Intermediaire/ViperWeavePreview";
+import MonkeyFistPreview from "../components/Intermediaire/MonkeyFistPreview";
+import DiamondKnotPreview from "../components/Intermediaire/DiamondKnotPreview";
 import KingCobraPreview from "../components/Avance/KingCobraPreview";
 import SanctifiedPreview from "../components/Avance/SanctifiedPreview";
 import SharkJawbonePreview from "../components/Avance/SharkJawbonePreview";
 import AztecSunBarPreview from "../components/Expert/AztecSunBarPreview";
 import CelticBarPreview from "../components/Expert/CelticBarPreview";
-import MadMaxPreview from "../components/Expert/MadMaxPreview";
 
 import { getUserPlan } from "../App";
 import { GUIDES_ETSY } from "../data/etsyGuides";
@@ -94,7 +96,7 @@ const HARNESS_SIZES: { value: HarnessSize; label: string; lengthCm: number; poit
   { value: "XL", label: "XL", lengthCm: 90, poitrail: "80-100 cm · 35+ kg" },
 ];
 
-const HARNESS_RECOMMENDED_KNOTS = ["Cobra", "Fishtail", "TressageRond", "ViperWeave", "KingCobra"];
+const HARNESS_RECOMMENDED_KNOTS = ["Cobra", "Fishtail", "SquareKnot", "ViperWeave", "KingCobra", "SharkJawbone"];
 
 const UNIT_OPTIONS: { value: LengthUnit; label: string }[] = [
   { value: "cm", label: "cm" },
@@ -108,16 +110,18 @@ const KNOTS_REGISTRY = [
   { id: "LadderRack",   name: "Ladder Rack",  difficulty: "Débutant",      component: LadderRackPreview,   factor: 20, order: 3, is3D: true, baseMinutes: 50,  calibrated: false },
   { id: "SnakeKnot",    name: "Snake Knot",   difficulty: "Débutant",      component: SnakeKnotPreview,    factor: 14, order: 4, is3D: true, baseMinutes: 35,  calibrated: false },
   { id: "Spiral",       name: "Spiral",       difficulty: "Débutant",      component: SpiralPreview,       factor: 6,  order: 5, is3D: true, baseMinutes: 40,  calibrated: true  },
+  { id: "SquareKnot",   name: "Square Knot",  difficulty: "Débutant",      component: SquareKnotPreview,   factor: 40, order: 6, is3D: true, baseMinutes: 40,  calibrated: false },
   { id: "Trilobite",    name: "Trilobite",    difficulty: "Intermédiaire", component: TrilobitePreview,    factor: 24, order: 1, is3D: true, baseMinutes: 70,  calibrated: false },
   { id: "CrownSinnet",  name: "Crown Sinnet", difficulty: "Intermédiaire", component: CrownSinnetPreview,  factor: 16, order: 2, is3D: true, baseMinutes: 60,  calibrated: false },
   { id: "TressageRond", name: "Tressage Rond",difficulty: "Intermédiaire", component: TressageRondPreview, factor: 14, order: 3, is3D: true, baseMinutes: 55,  calibrated: true  },
   { id: "ViperWeave",   name: "Viper Weave",  difficulty: "Intermédiaire", component: ViperWeavePreview,   factor: 22, order: 4, is3D: true, baseMinutes: 65,  calibrated: false },
+  { id: "MonkeyFist",   name: "Monkey Fist",  difficulty: "Intermédiaire", component: MonkeyFistPreview,   factor: 40, order: 5, is3D: true, baseMinutes: 60,  calibrated: false },
+  { id: "DiamondKnot",  name: "Diamond Knot", difficulty: "Intermédiaire", component: DiamondKnotPreview,  factor: 40, order: 6, is3D: true, baseMinutes: 50,  calibrated: false },
   { id: "KingCobra",    name: "King Cobra",   difficulty: "Avancé",        component: KingCobraPreview,    factor: 8,  order: 1, is3D: true, baseMinutes: 90,  calibrated: true  },
   { id: "Sanctified",   name: "Sanctified",   difficulty: "Avancé",        component: SanctifiedPreview,   factor: 28, order: 2, is3D: true, baseMinutes: 80,  calibrated: false },
   { id: "SharkJawbone", name: "Shark Jawbone",difficulty: "Avancé",        component: SharkJawbonePreview, factor: 30, order: 3, is3D: true, baseMinutes: 85,  calibrated: false },
   { id: "AztecSunBar",  name: "Aztec Sun Bar",difficulty: "Expert",        component: AztecSunBarPreview,  factor: 40, order: 1, is3D: true, baseMinutes: 105, calibrated: false },
   { id: "CelticBar",    name: "Celtic Bar",   difficulty: "Expert",        component: CelticBarPreview,    factor: 38, order: 2, is3D: true, baseMinutes: 100, calibrated: false },
-  { id: "MadMax",       name: "Mad Max",      difficulty: "Expert",        component: MadMaxPreview,       factor: 45, order: 3, is3D: true, baseMinutes: 120, calibrated: false },
 ] as const;
 
 const STORAGE_KEYS = {

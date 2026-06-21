@@ -10,12 +10,13 @@ import TrilobitePreview from "../components/Intermediaire/TrilobitePreview";
 import CrownSinnetPreview from "../components/Intermediaire/CrownSinnetPreview";
 import TressageRondPreview from "../components/Intermediaire/TressageRondPreview";
 import ViperWeavePreview from "../components/Intermediaire/ViperWeavePreview";
+import MonkeyFistPreview from "../components/Intermediaire/MonkeyFistPreview";
+import DiamondKnotPreview from "../components/Intermediaire/DiamondKnotPreview";
 import KingCobraPreview from "../components/Avance/KingCobraPreview";
 import SanctifiedPreview from "../components/Avance/SanctifiedPreview";
 import SharkJawbonePreview from "../components/Avance/SharkJawbonePreview";
 import AztecSunBarPreview from "../components/Expert/AztecSunBarPreview";
 import CelticBarPreview from "../components/Expert/CelticBarPreview";
-import MadMaxPreview from "../components/Expert/MadMaxPreview";
 
 const THEME = {
   colors: { primaryBg: "#EFE7D8", cardBg: "#FFFFFF", accent: "#006D6F", textMain: "#1F1F1F", textMuted: "#6B6B6B", border: "#EEEEEE", error: "#c53030" },
@@ -27,8 +28,8 @@ const KNOT_COMPONENTS: Record<string, React.ComponentType<any>> = {
   SnakeKnot: SnakeKnotPreview, Spiral: SpiralPreview, SquareKnot: SquareKnotPreview,
   Trilobite: TrilobitePreview, CrownSinnet: CrownSinnetPreview, TressageRond: TressageRondPreview,
   ViperWeave: ViperWeavePreview, KingCobra: KingCobraPreview, Sanctified: SanctifiedPreview,
+  MonkeyFist: MonkeyFistPreview, DiamondKnot: DiamondKnotPreview,
   SharkJawbone: SharkJawbonePreview, AztecSunBar: AztecSunBarPreview, CelticBar: CelticBarPreview,
-  MadMax: MadMaxPreview,
 };
 
 function KnotThumbnail({ nodeId, colors, type }: { nodeId: string; colors: string[]; type: string }) {

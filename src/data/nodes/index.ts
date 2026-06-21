@@ -17,7 +17,8 @@ import { SHARK_JAWBONE } from "./sharkJawbone";
 import { CELTIC_BAR } from "./celticBar";
 import { AZTEC_SUN_BAR } from "./aztecSunBar";
 import { SANCTIFIED } from "./sanctified";
-import { MAD_MAX } from "./madMax";
+import { MONKEY_FIST } from "./monkeyFist";
+import { DIAMOND_KNOT } from "./diamondKnot";
 
 
 export const NODES: NodeDef[] = [
@@ -37,7 +38,8 @@ export const NODES: NodeDef[] = [
   CELTIC_BAR,
   AZTEC_SUN_BAR,
   SANCTIFIED,
-  MAD_MAX,
+  MONKEY_FIST,
+  DIAMOND_KNOT,
 ];
 
 // Classement mis à jour avec "Débutant" au lieu de "Facile"
