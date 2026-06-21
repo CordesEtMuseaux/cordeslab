@@ -21,8 +21,15 @@ import SharkJawbonePreview from "../components/Avance/SharkJawbonePreview";
 import AztecSunBarPreview from "../components/Expert/AztecSunBarPreview";
 import CelticBarPreview from "../components/Expert/CelticBarPreview";
 
-import { getUserPlan } from "../App";
-import { GUIDES_ETSY } from "../data/etsyGuides";
+import {
+  getUserPlan,
+  ACCESSORIES_CONFIG,
+  KNOTS_CATALOG,
+  HARNESS_RECOMMENDED_KNOTS,
+  isKnotLocked,
+  isAccLocked,
+  type AccessoryKey,
+} from "../shared/catalog";
 
 const KNOTS_WITHOUT_AME = ["TressageRond"];
 
@@ -59,13 +66,7 @@ const COLORS_DATABASE = [
   { name: "Bordeaux",          hex: "#800020" },
 ];
 
-const ACCESSORIES_CONFIG = {
-  COLLIER: { label: "Collier", icon: "🐕", lock: null,      models: ["Boucle plastique", "Boucle métal", "Martingale", "Adaptateur Biothane"] },
-  POIGNEE: { label: "Poignée", icon: "✋", lock: "Creator", models: ["Simple", "Confort"] },
-  LAISSE:  { label: "Laisse",  icon: "🦮", lock: "Pro",     models: ["1m20", "Multiposition sans poignée", "Multiposition avec poignée"] },
-  HARNAIS: { label: "Harnais", icon: "🎗️", lock: "Pro",    models: ["En Y", "En H"] },
-  JOUETS:  { label: "Jouets",  icon: "🎾", lock: "Pro",     models: ["Balle avec corde", "Tug simple", "Tug double poignée"] },
-} as const;
+// ACCESSORIES_CONFIG et AccessoryKey viennent maintenant de ../shared/catalog
 
 const UPSELL_CONTENT: Record<string, { title: string; body: string; cta: string }> = {
   Creator: {
@@ -83,7 +84,6 @@ const UPSELL_CONTENT: Record<string, { title: string; body: string; cta: string 
 const EMAIL_POPUP_KEY = "cordeslab_email_popup_shown";
 const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwB13N-t_tggjVKIk54DBhpKnQjK2EZfblejGDG_8YRvvZU9iAzRISY23jKkFCIdxx4/exec";
 
-type AccessoryKey = keyof typeof ACCESSORIES_CONFIG;
 type LengthUnit = "cm" | "m" | "in";
 type RopeSize = "3mm" | "4mm";
 type HarnessSize = "XS" | "S" | "M" | "L" | "XL";
@@ -96,7 +96,7 @@ const HARNESS_SIZES: { value: HarnessSize; label: string; lengthCm: number; poit
   { value: "XL", label: "XL", lengthCm: 90, poitrail: "80-100 cm · 35+ kg" },
 ];
 
-const HARNESS_RECOMMENDED_KNOTS = ["Cobra", "Fishtail", "SquareKnot", "ViperWeave", "KingCobra", "SharkJawbone"];
+// HARNESS_RECOMMENDED_KNOTS vient maintenant de ../shared/catalog
 
 const UNIT_OPTIONS: { value: LengthUnit; label: string }[] = [
   { value: "cm", label: "cm" },
@@ -104,25 +104,17 @@ const UNIT_OPTIONS: { value: LengthUnit; label: string }[] = [
   { value: "in", label: "pouces" },
 ];
 
-const KNOTS_REGISTRY = [
-  { id: "Cobra",        name: "Cobra",        difficulty: "Débutant",      component: CobraPreview,        factor: 21, order: 1, is3D: true, baseMinutes: 45,  calibrated: true  },
-  { id: "Fishtail",     name: "Fishtail",     difficulty: "Débutant",      component: FishtailPreview,     factor: 18, order: 2, is3D: true, baseMinutes: 55,  calibrated: true  },
-  { id: "LadderRack",   name: "Ladder Rack",  difficulty: "Débutant",      component: LadderRackPreview,   factor: 20, order: 3, is3D: true, baseMinutes: 50,  calibrated: false },
-  { id: "SnakeKnot",    name: "Snake Knot",   difficulty: "Débutant",      component: SnakeKnotPreview,    factor: 14, order: 4, is3D: true, baseMinutes: 35,  calibrated: false },
-  { id: "Spiral",       name: "Spiral",       difficulty: "Débutant",      component: SpiralPreview,       factor: 6,  order: 5, is3D: true, baseMinutes: 40,  calibrated: true  },
-  { id: "SquareKnot",   name: "Square Knot",  difficulty: "Débutant",      component: SquareKnotPreview,   factor: 40, order: 6, is3D: true, baseMinutes: 40,  calibrated: false },
-  { id: "Trilobite",    name: "Trilobite",    difficulty: "Intermédiaire", component: TrilobitePreview,    factor: 24, order: 1, is3D: true, baseMinutes: 70,  calibrated: false },
-  { id: "CrownSinnet",  name: "Crown Sinnet", difficulty: "Intermédiaire", component: CrownSinnetPreview,  factor: 16, order: 2, is3D: true, baseMinutes: 60,  calibrated: false },
-  { id: "TressageRond", name: "Tressage Rond",difficulty: "Intermédiaire", component: TressageRondPreview, factor: 14, order: 3, is3D: true, baseMinutes: 55,  calibrated: true  },
-  { id: "ViperWeave",   name: "Viper Weave",  difficulty: "Intermédiaire", component: ViperWeavePreview,   factor: 22, order: 4, is3D: true, baseMinutes: 65,  calibrated: false },
-  { id: "MonkeyFist",   name: "Monkey Fist",  difficulty: "Intermédiaire", component: MonkeyFistPreview,   factor: 40, order: 5, is3D: true, baseMinutes: 60,  calibrated: false },
-  { id: "DiamondKnot",  name: "Diamond Knot", difficulty: "Intermédiaire", component: DiamondKnotPreview,  factor: 40, order: 6, is3D: true, baseMinutes: 50,  calibrated: false },
-  { id: "KingCobra",    name: "King Cobra",   difficulty: "Avancé",        component: KingCobraPreview,    factor: 8,  order: 1, is3D: true, baseMinutes: 90,  calibrated: true  },
-  { id: "Sanctified",   name: "Sanctified",   difficulty: "Avancé",        component: SanctifiedPreview,   factor: 28, order: 2, is3D: true, baseMinutes: 80,  calibrated: false },
-  { id: "SharkJawbone", name: "Shark Jawbone",difficulty: "Avancé",        component: SharkJawbonePreview, factor: 30, order: 3, is3D: true, baseMinutes: 85,  calibrated: false },
-  { id: "AztecSunBar",  name: "Aztec Sun Bar",difficulty: "Expert",        component: AztecSunBarPreview,  factor: 40, order: 1, is3D: true, baseMinutes: 105, calibrated: false },
-  { id: "CelticBar",    name: "Celtic Bar",   difficulty: "Expert",        component: CelticBarPreview,    factor: 38, order: 2, is3D: true, baseMinutes: 100, calibrated: false },
-] as const;
+// Les métadonnées (id/difficulté/order/factor/baseMinutes/calibrated) viennent
+// du catalogue partagé ../shared/catalog — seul le mapping vers les composants
+// de preview 3D reste local à ce fichier (propre à l'UI du calculateur).
+const KNOT_COMPONENTS: Record<string, React.ComponentType<any>> = {
+  Cobra: CobraPreview, Fishtail: FishtailPreview, LadderRack: LadderRackPreview, SnakeKnot: SnakeKnotPreview,
+  Spiral: SpiralPreview, SquareKnot: SquareKnotPreview, Trilobite: TrilobitePreview, CrownSinnet: CrownSinnetPreview,
+  TressageRond: TressageRondPreview, ViperWeave: ViperWeavePreview, MonkeyFist: MonkeyFistPreview, DiamondKnot: DiamondKnotPreview,
+  KingCobra: KingCobraPreview, Sanctified: SanctifiedPreview, SharkJawbone: SharkJawbonePreview, AztecSunBar: AztecSunBarPreview, CelticBar: CelticBarPreview,
+};
+
+const KNOTS_REGISTRY = KNOTS_CATALOG.map((k) => ({ ...k, component: KNOT_COMPONENTS[k.id], is3D: true as const }));
 
 const STORAGE_KEYS = {
   PROJECTS:     "cordeslab_projects",
@@ -148,18 +140,7 @@ const equivUnit = (u: LengthUnit): LengthUnit => u === "cm" ? "in" : "cm";
 const fmtDur    = (min: number) => `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, "0")}`;
 const fmtTime   = (s: number) => `${Math.floor(s / 3600)}h ${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}m ${String(s % 60).padStart(2, "0")}s`;
 
-const isAccLocked = (lock: string | null) => {
-  const plan = getUserPlan();
-  if (!lock || plan === "Pro") return false;
-  if (plan === "Creator") return lock === "Pro";
-  return true;
-};
-const isKnotLocked = (order: number) => {
-  const plan = getUserPlan();
-  if (plan === "Pro") return false;
-  if (plan === "Creator") return order > 3;
-  return order > 2;
-};
+// isAccLocked et isKnotLocked viennent maintenant de ../shared/catalog
 
 const getRefLen = (type: AccessoryKey, model: string) => {
   if (type === "LAISSE") {
@@ -406,7 +387,6 @@ export default function NewCalc() {
   }, [formData, knot, effectiveLength, hasNoAme]);
 
   const currentPalette = useMemo(() => formData.colors.slice(0, formData.colorCount), [formData.colors, formData.colorCount]);
-  const currentGuide   = useMemo(() => { const key = `${formData.nodeId}|${formData.type}`; return GUIDES_ETSY[key] ?? null; }, [formData.nodeId, formData.type]);
 
   const handleReset = useCallback(() => { setFormData(INITIAL_FORM); setTime(0); setIsPaused(true); setSaveMessage(""); }, []);
   const handleColorChange = useCallback((i: number, value: string) => { setFormData((prev) => { const colors = [...prev.colors]; colors[i] = value; return { ...prev, colors }; }); }, []);
@@ -649,7 +629,7 @@ export default function NewCalc() {
               <h4 style={{ color: "#006D6F", textAlign: "center", marginBottom: "5px", fontWeight: "bold" }}>{results.knotName.toUpperCase()}</h4>
               <div style={{ fontSize: "14px", color: "#8C8C8C", textAlign: "center", marginBottom: "8px" }}>Durée approximative : {results.estimatedTime}</div>
               {(results.isHarnessEstimated || !results.calibrated) && (<div style={{ fontSize: "11px", color: "#B8860B", background: "#FFF8E1", border: "1px solid #FFD700", borderRadius: "8px", padding: "5px 10px", textAlign: "center", marginBottom: "10px" }}>⚠️ Longueurs estimées — pas encore vérifiées sur échantillon réel</div>)}
-              {currentGuide && (<a href={currentGuide.url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: "8px", background: "#FFF8F0", border: "1px solid #F0C080", borderRadius: "10px", padding: "8px 12px", marginBottom: "10px", textDecoration: "none", color: "#8B5A00", fontSize: "12px", fontWeight: 600 }}><span style={{ fontSize: "16px" }}>📖</span><span>Guide disponible sur Etsy → {currentGuide.title}</span></a>)}
+              
               <div style={previewBox} className="knot-preview-wrap">
                 <KnotComponent ref={knotRef} color1={formData.colors[0]} color2={formData.colors[1]} accessoryType={formData.type} orientation="horizontal" />
               </div>

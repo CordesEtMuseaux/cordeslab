@@ -7,22 +7,16 @@ import NewCalc from "./pages/NewCalc";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
 import Offers from "./pages/Offers";
+import GuidesLibrary from "./pages/GuidesLibrary";
 import ThankYou from "./pages/ThankYou";
 import Admin from "./pages/Admin";
 
 import { LogoMark } from "./components/LogoMark";
-import { loadUserAccess } from "./utils/userAccessStorage";
 
-// ─── getUserPlan — lit cordeslab_user_access (système unifié) ─────────────────
-export function getUserPlan(): "Atelier" | "Creator" | "Pro" {
-  try {
-    const access = loadUserAccess();
-    if (access.status !== "active") return "Atelier";
-    if (access.level === "pro")     return "Pro";
-    if (access.level === "creator") return "Creator";
-  } catch { /* ignore */ }
-  return "Atelier";
-}
+// getUserPlan vit maintenant dans shared/catalog.ts (source unique de vérité,
+// réutilisée par le calculateur ET la bibliothèque de guides). Ré-exporté ici
+// pour ne rien casser si du code existant l'importe encore depuis "./App".
+export { getUserPlan } from "./shared/catalog";
 
 // ─── Suivi Google Analytics des routes React ─────────────────────────────────
 declare global {
@@ -103,6 +97,7 @@ function TopNav() {
         <NavLink to="/newcalc"  className={linkClass} onClick={handleLinkClick}>Nouveau</NavLink>
         <NavLink to="/projects" className={linkClass} onClick={handleLinkClick}>Projets</NavLink>
         <NavLink to="/history"  className={linkClass} onClick={handleLinkClick}>Historique</NavLink>
+        <NavLink to="/bibliotheque" className={linkClass} onClick={handleLinkClick}>Guides</NavLink>
         <NavLink to="/offers"   className={linkClass} onClick={handleLinkClick}>Offres</NavLink>
       </nav>
     </header>
@@ -121,6 +116,7 @@ function AppInner() {
         <Route path="/newcalc"   element={<NewCalc />} />
         <Route path="/projects"  element={<Projects />} />
         <Route path="/history"   element={<History />} />
+        <Route path="/bibliotheque" element={<GuidesLibrary />} />
         <Route path="/offers"    element={<Offers />} />
         <Route path="/settings"  element={<Settings />} />
         <Route path="/thank-you" element={<ThankYou />} />
