@@ -100,6 +100,36 @@ export const getGuidesForAccessory = (accessoryKey: AccessoryKey): GuideEntry[] 
 export const getGuideById = (id: string): GuideEntry | undefined =>
   GUIDES_LIBRARY.find((g) => g.id === id);
 
+// ─── Guides Bonus — transversaux, accès libre (Atelier) ──────────────────────
+// Ces guides ne sont pas liés à un nœud × accessoire spécifique.
+// Ils couvrent des sujets transversaux (entretien, sécurité, kit de dépannage…).
+// minTier: "Atelier" = accessible à tous, y compris les utilisateurs gratuits.
+
+export interface BonusEntry {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  contentUrl: string | null; // null = pas encore produit
+}
+
+export const BONUS_LIBRARY: BonusEntry[] = [
+  {
+    id: "entretien-paracorde",
+    title: "Entretien des accessoires en paracorde",
+    description: "Nettoyage, séchage, contrôle avant utilisation — maintenir la sécurité dans le temps.",
+    icon: "🧼",
+    contentUrl: "/guides/bonus/entretien-paracorde.pdf",
+  },
+  {
+    id: "kit-sos-paracorde",
+    title: "Kit SOS Paracorde",
+    description: "Tout ce qu'il faut savoir pour réparer, renforcer ou sécuriser un accessoire en urgence.",
+    icon: "🆘",
+    contentUrl: null,
+  },
+];
+
 // Garde-fou dev : vérifie que chaque nœud du catalogue a au moins un guide,
 // et que le total correspond bien aux 41 attendus par la synthèse.
 if (import.meta.env.DEV) {

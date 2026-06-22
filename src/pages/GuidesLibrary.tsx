@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { getUserPlan, KNOTS_CATALOG, ACCESSORIES_CONFIG, type PlanLevel } from "../shared/catalog";
-import { GUIDES_LIBRARY, isGuideLocked, getGuideMinTier, getGuidesForKnot, getUnlockedGuides } from "../data/guidesLibrary";
+import { GUIDES_LIBRARY, isGuideLocked, getGuideMinTier, getGuidesForKnot, getUnlockedGuides, BONUS_LIBRARY, type BonusEntry } from "../data/guidesLibrary";
 
 const THEME = {
   colors: {
@@ -118,6 +118,60 @@ export default function GuidesLibrary() {
             </div>
           </div>
         ))}
+        {/* ── Section Bonus ─────────────────────────────────────────────── */}
+        <div style={{
+          background: THEME.colors.cardBg, borderRadius: THEME.radius.card, padding: "18px 22px",
+          marginTop: "24px", border: `1px solid ${THEME.colors.border}`,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+            <h2 style={{ fontSize: "18px", fontWeight: 700, margin: 0 }}>🎁 Bonus</h2>
+            <span style={{
+              fontSize: "11px", fontWeight: 600, color: THEME.colors.accent,
+              border: `1px solid ${THEME.colors.accent}`, borderRadius: THEME.radius.pill, padding: "2px 9px",
+            }}>
+              Accès libre
+            </span>
+          </div>
+          <p style={{ fontSize: "13px", color: THEME.colors.textMuted, marginBottom: "14px", marginTop: 0 }}>
+            Guides transversaux disponibles pour tous les forfaits.
+          </p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "10px" }}>
+            {BONUS_LIBRARY.map((bonus: BonusEntry) => {
+              const isProduced = bonus.contentUrl !== null;
+              const content = (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: "12px", padding: "12px 14px",
+                  borderRadius: "12px", border: `1px solid ${THEME.colors.border}`,
+                  background: THEME.colors.cardBg,
+                }}>
+                  <span style={{ fontSize: "24px", flexShrink: 0 }}>{bonus.icon}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: "14px", fontWeight: 600, color: THEME.colors.textMain }}>
+                      {bonus.title}
+                    </div>
+                    <div style={{ fontSize: "12px", color: THEME.colors.textMuted, marginTop: "2px" }}>
+                      {bonus.description}
+                    </div>
+                    <div style={{ fontSize: "11px", color: isProduced ? THEME.colors.accent : THEME.colors.textMuted, marginTop: "4px", fontWeight: 600 }}>
+                      {isProduced ? "📖 Voir le guide" : "🛠️ Bientôt disponible"}
+                    </div>
+                  </div>
+                </div>
+              );
+
+              if (isProduced) {
+                return (
+                  <a key={bonus.id} href={bonus.contentUrl!} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", color: "inherit" }}>
+                    {content}
+                  </a>
+                );
+              }
+              return <div key={bonus.id}>{content}</div>;
+            })}
+          </div>
+        </div>
+
       </div>
     </div>
   );
