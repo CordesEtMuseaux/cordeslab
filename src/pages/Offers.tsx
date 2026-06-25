@@ -27,12 +27,12 @@ const PLANS_DATA: Record<"monthly" | "yearly", Plan[]> = {
   monthly: [
     { name: "Atelier", price: "0€", desc: "Pour débuter sereinement", current: true, planCode: null, features: ["8 tressages essentiels", "Sauvegarde illimitée", "Calculs de base uniquement"] },
     { name: "Creator", price: "17€", desc: "Pour les créateurs passionnés", highlight: true, planCode: "creator_monthly", features: ["12 tressages sélectionnés", "Sauvegarde illimitée", "Calculs Poignées", "Export PDF"] },
-    { name: "Pro",     price: "29€", desc: "L'outil professionnel complet", planCode: "pro_monthly", features: ["Bibliothèque intégrale", "Sauvegarde illimitée", "Calculs Laisses & Accessoires", "Gestion client"] }
+    { name: "Pro",     price: "29€", desc: "L'outil professionnel complet", planCode: "pro_monthly", features: ["Bibliothèque intégrale", "Sauvegarde illimitée", "Calculs Laisses & Accessoires"] }
   ],
   yearly: [
     { name: "Atelier", price: "0€",   desc: "Pour débuter sereinement",       current: true, planCode: null,             features: ["8 tressages essentiels", "Sauvegarde illimitée", "Calculs de base uniquement"] },
     { name: "Creator", price: "159€",  desc: "Pour les créateurs passionnés",  highlight: true, saving: "Économisez 45€/an", planCode: "creator_yearly",   features: ["12 tressages sélectionnés", "Sauvegarde illimitée", "Calculs Poignées", "Export PDF"] },
-    { name: "Pro",     price: "279€", desc: "L'outil professionnel complet",  saving: "Économisez 69€/an", planCode: "pro_yearly", features: ["Bibliothèque intégrale", "Sauvegarde illimitée", "Calculs Laisses & Accessoires", "Gestion client"] }
+    { name: "Pro",     price: "279€", desc: "L'outil professionnel complet",  saving: "Économisez 69€/an", planCode: "pro_yearly", features: ["Bibliothèque intégrale", "Sauvegarde illimitée", "Calculs Laisses & Accessoires"] }
   ]
 };
 
