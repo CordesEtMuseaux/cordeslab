@@ -82,7 +82,7 @@ const UPSELL_CONTENT: Record<string, { title: string; body: string; cta: string 
 };
 
 const EMAIL_POPUP_KEY = "cordeslab_email_popup_shown";
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwB13N-t_tggjVKIk54DBhpKnQjK2EZfblejGDG_8YRvvZU9iAzRISY23jKkFCIdxx4/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby_0AR-Jy7qG5fxaRgueQfeIsWAmWFceZAF41GHlrfwRaokjS9MMVA_OdeI7l3-DyWZ/exec";
 
 type LengthUnit = "cm" | "m" | "in";
 type RopeSize = "3mm" | "4mm";
