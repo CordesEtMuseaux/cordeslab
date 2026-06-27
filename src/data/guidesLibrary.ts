@@ -44,7 +44,7 @@ const entry = (knotId: string, accessoryKey: AccessoryKey, contentUrl: string | 
 // Groupé par difficulté pour rester lisible et facile à recouper avec le document.
 export const GUIDES_LIBRARY: GuideEntry[] = [
   // ── Débutant (20 guides) ──
-  entry("Cobra", "COLLIER", "/guides/cobra-collier.pdf"), entry("Cobra", "LAISSE"), entry("Cobra", "POIGNEE"), entry("Cobra", "HARNAIS"), entry("Cobra", "JOUETS", "/guides/cobra-jouets.pdf"),
+  entry("Cobra", "COLLIER", "/guides/cobra/cobra-collier.pdf"), entry("Cobra", "LAISSE"), entry("Cobra", "POIGNEE"), entry("Cobra", "HARNAIS"), entry("Cobra", "JOUETS", "/guides/cobra/cobra-jouets.pdf"),
   entry("Fishtail", "COLLIER"), entry("Fishtail", "LAISSE"), entry("Fishtail", "POIGNEE"), entry("Fishtail", "JOUETS"), entry("Fishtail", "HARNAIS"),
   entry("LadderRack", "POIGNEE"), entry("LadderRack", "JOUETS"),
   entry("SnakeKnot", "LAISSE"), entry("SnakeKnot", "POIGNEE"), entry("SnakeKnot", "JOUETS"),
