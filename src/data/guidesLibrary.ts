@@ -45,14 +45,14 @@ const entry = (knotId: string, accessoryKey: AccessoryKey, contentUrl: string | 
 export const GUIDES_LIBRARY: GuideEntry[] = [
   // ── Débutant (20 guides) ──
   entry("Cobra", "COLLIER", "/guides/cobra/cobra-collier.pdf"), entry("Cobra", "LAISSE"), entry("Cobra", "POIGNEE"), entry("Cobra", "HARNAIS"), entry("Cobra", "JOUETS", "/guides/cobra/cobra-jouets.pdf"),
-  entry("Fishtail", "COLLIER"), entry("Fishtail", "LAISSE"), entry("Fishtail", "POIGNEE"), entry("Fishtail", "JOUETS"), entry("Fishtail", "HARNAIS"),
+  entry("Fishtail", "COLLIER", "/guides/fishtail/fishtail-collier.pdf"), entry("Fishtail", "LAISSE"), entry("Fishtail", "POIGNEE"), entry("Fishtail", "JOUETS"), entry("Fishtail", "HARNAIS"),
   entry("LadderRack", "POIGNEE"), entry("LadderRack", "JOUETS"),
   entry("SnakeKnot", "LAISSE"), entry("SnakeKnot", "POIGNEE"), entry("SnakeKnot", "JOUETS"),
   entry("Spiral", "LAISSE"), entry("Spiral", "JOUETS"),
   entry("SquareKnot", "COLLIER"), entry("SquareKnot", "POIGNEE"), entry("SquareKnot", "HARNAIS"),
 
   // ── Intermédiaire (11 guides) ── Tressage Rond : jamais Harnais (confort)
-  entry("Trilobite", "COLLIER"), entry("Trilobite", "LAISSE"),
+  entry("Trilobite", "COLLIER", "/guides/trilobite/trilobite-collier.pdf"), entry("Trilobite", "LAISSE"),
   entry("CrownSinnet", "POIGNEE"), entry("CrownSinnet", "JOUETS"),
   entry("TressageRond", "LAISSE"), entry("TressageRond", "POIGNEE"),
   entry("ViperWeave", "COLLIER"), entry("ViperWeave", "HARNAIS"),
