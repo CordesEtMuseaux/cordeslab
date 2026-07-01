@@ -60,7 +60,7 @@ export const GUIDES_LIBRARY: GuideEntry[] = [
   entry("DiamondKnot", "POIGNEE"), entry("DiamondKnot", "JOUETS"),
 
   // ── Avancé (7 guides) ──
-  entry("KingCobra", "COLLIER"), entry("KingCobra", "LAISSE"), entry("KingCobra", "JOUETS"), entry("KingCobra", "HARNAIS"),
+  entry("KingCobra", "COLLIER", "/guides/king-cobra/king-cobra-collier.pdf"), entry("KingCobra", "LAISSE"), entry("KingCobra", "JOUETS"), entry("KingCobra", "HARNAIS"),
   entry("Sanctified", "COLLIER"),
   entry("SharkJawbone", "COLLIER"), entry("SharkJawbone", "HARNAIS"),
 
